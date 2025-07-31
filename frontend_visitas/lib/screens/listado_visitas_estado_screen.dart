@@ -18,7 +18,7 @@ class _ListadoVisitasEstadoScreenState extends State<ListadoVisitasEstadoScreen>
   @override
   void initState() {
     super.initState();
-    _futureVisitas = _apiService.getMisVisitasPendientes(); // Puedes usar estado si tienes otros
+    _futureVisitas = _apiService.getMisVisitasPorEstado(widget.estado ?? '');
   }
 
   @override
@@ -43,7 +43,7 @@ class _ListadoVisitasEstadoScreenState extends State<ListadoVisitasEstadoScreen>
             itemBuilder: (context, index) {
               final visita = visitas[index];
               return ListTile(
-                title: Text(visita.tipoAsunto),
+                title: Text(visita.tipoAsunto ?? 'Sin asunto'),
                 subtitle: Text(visita.observaciones ?? ''),
               );
             },
