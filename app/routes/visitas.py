@@ -15,7 +15,10 @@ import os
 from app.dependencies import get_current_user 
 
 router = APIRouter(
+<<<<<<< HEAD
     prefix="/api",  # Es una buena práctica añadir un prefijo a todas las rutas de la API
+=======
+>>>>>>> frontend
     tags=["Visitas y Sedes"] # Agrupa las rutas en la documentación de Swagger
 )
 
@@ -35,6 +38,23 @@ def listar_instituciones(db: Session = Depends(get_db)):
     """
     return db.query(models.Institucion).order_by(models.Institucion.nombre).all()
 
+<<<<<<< HEAD
+=======
+@router.get("/instituciones_por_municipio/{municipio_id}", response_model=List[schemas.InstitucionOut])
+def listar_instituciones_por_municipio(municipio_id: int, db: Session = Depends(get_db)):
+    """
+    Obtiene las instituciones educativas filtrando por el ID del municipio.
+    """
+    instituciones = db.query(models.Institucion).filter(models.Institucion.municipio_id == municipio_id).order_by(models.Institucion.nombre).all()
+    
+    if not instituciones:
+        raise HTTPException(
+            status_code=404, 
+            detail="No se encontraron instituciones para el municipio especificado."
+        )
+    return instituciones
+
+>>>>>>> frontend
 @router.get("/sedes_por_municipio/{municipio_id}", response_model=List[schemas.SedeEducativaSimpleOut])
 def listar_sedes_por_municipio(municipio_id: int, db: Session = Depends(get_db)):
     """
@@ -49,6 +69,23 @@ def listar_sedes_por_municipio(municipio_id: int, db: Session = Depends(get_db))
         )
     return sedes
 
+<<<<<<< HEAD
+=======
+@router.get("/sedes_por_institucion/{institucion_id}", response_model=List[schemas.SedeEducativaSimpleOut])
+def listar_sedes_por_institucion(institucion_id: int, db: Session = Depends(get_db)):
+    """
+    Obtiene las sedes educativas filtrando por el ID de la institución.
+    """
+    sedes = db.query(models.SedeEducativa).filter(models.SedeEducativa.institucion_id == institucion_id).order_by(models.SedeEducativa.nombre).all()
+    
+    if not sedes:
+        raise HTTPException(
+            status_code=404, 
+            detail="No se encontraron sedes para la institución especificada."
+        )
+    return sedes
+
+>>>>>>> frontend
 # --- ENDPOINTS DE VISITAS (CRUD Y LÓGICA DE NEGOCIO) ---
 
 @router.post("/visitas", response_model=schemas.VisitaOut, status_code=status.HTTP_201_CREATED)
@@ -215,4 +252,130 @@ def _build_absolute_url(request: Request, file_path: str) -> Optional[str]:
     """Construye una URL absoluta para un archivo de evidencia."""
     if not file_path:
         return None
+<<<<<<< HEAD
     return str(request.base_url.replace(path=file_path))
+=======
+    return str(request.base_url.replace(path=file_path))
+
+# --- ENDPOINTS PARA EL DASHBOARD DEL VISITADOR ---
+
+@router.get("/dashboard/estadisticas")
+def obtener_estadisticas_visitador(
+    db: Session = Depends(get_db),
+    usuario: models.Usuario = Depends(get_current_user)
+):
+    """
+    Obtiene estadísticas del visitador: visitas pendientes y completadas.
+    """
+    try:
+        # Contar visitas pendientes
+        visitas_pendientes = db.query(models.Visita).filter(
+            models.Visita.usuario_id == usuario.id,
+            models.Visita.estado == "pendiente"
+        ).count()
+        
+        # Contar visitas completadas
+        visitas_completadas = db.query(models.Visita).filter(
+            models.Visita.usuario_id == usuario.id,
+            models.Visita.estado == "completada"
+        ).count()
+        
+        return {
+            "visitas_pendientes": visitas_pendientes,
+            "visitas_completadas": visitas_completadas,
+            "total_visitas": visitas_pendientes + visitas_completadas
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al obtener estadísticas: {str(e)}"
+        )
+
+@router.get("/perfil")
+def obtener_perfil_usuario(
+    usuario: models.Usuario = Depends(get_current_user)
+):
+    """
+    Obtiene el perfil del usuario autenticado.
+    """
+    return {
+        "id": usuario.id,
+        "nombre": usuario.nombre,
+        "correo": usuario.correo,
+        "rol": usuario.rol.nombre if usuario.rol else None
+    }
+
+# --- ENDPOINTS PARA EL CHECKLIST ---
+
+@router.get("/checklist", response_model=List[schemas.ChecklistCategoriaBase])
+def get_full_checklist(db: Session = Depends(get_db)):
+    """
+    Este endpoint devuelve el checklist completo, con todas las
+    categorías y sus preguntas (ítems) anidados.
+    La app de Flutter llamará a esta ruta para construir el formulario.
+    """
+    # Por ahora, devolvemos datos de ejemplo
+    # En el futuro, esto vendrá de la base de datos
+    checklist_completo = [
+        {
+            "id": 1,
+            "nombre": "Infraestructura",
+            "items": [
+                {"id": 1, "pregunta_texto": "¿La sede tiene acceso a agua potable?"},
+                {"id": 2, "pregunta_texto": "¿Los baños están en buen estado?"},
+                {"id": 3, "pregunta_texto": "¿Hay electricidad en todas las aulas?"}
+            ]
+        },
+        {
+            "id": 2,
+            "nombre": "Seguridad",
+            "items": [
+                {"id": 4, "pregunta_texto": "¿Hay vigilancia en la sede?"},
+                {"id": 5, "pregunta_texto": "¿Los estudiantes están seguros?"}
+            ]
+        }
+    ]
+    
+    if not checklist_completo:
+        raise HTTPException(status_code=404, detail="Checklist no encontrado")
+    return checklist_completo
+
+@router.post("/visitas-checklist", status_code=201)
+def create_visita_con_respuestas(
+    visita_data: schemas.VisitaCreate,
+    db: Session = Depends(get_db),
+    usuario: models.Usuario = Depends(get_current_user)
+):
+    """
+    Este endpoint recibe los datos de una visita y la lista de respuestas
+    del checklist, y los guarda en la base de datos.
+    """
+    try:
+        # Crear la visita base
+        nueva_visita = models.Visita(
+            sede_id=visita_data.sede_id,
+            usuario_id=usuario.id,  # Usar el usuario autenticado
+            estado="pendiente",
+            observaciones="Visita con checklist"
+        )
+        db.add(nueva_visita)
+        db.flush()  # Para obtener el ID de la visita
+        
+        # Guardar las respuestas del checklist
+        for respuesta in visita_data.respuestas:
+            # Aquí deberías crear un modelo para las respuestas del checklist
+            # Por ahora, solo guardamos en observaciones
+            nueva_visita.observaciones += f"\nItem {respuesta.item_id}: {respuesta.respuesta}"
+            if respuesta.observacion:
+                nueva_visita.observaciones += f" - {respuesta.observacion}"
+        
+        db.commit()
+        return {"mensaje": "Visita y respuestas guardadas con éxito", "visita_id": nueva_visita.id}
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al guardar la visita: {str(e)}"
+        )
+>>>>>>> frontend

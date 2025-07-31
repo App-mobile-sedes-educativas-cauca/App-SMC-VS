@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:jwt_decoder/jwt_decoder.dart';
-
-// Importamos los modelos y servicios que vamos a usar
-// CORRECTO
 import 'package:frontend_visitas/services/api_service.dart';
-import 'package:frontend_visitas/models/visita.dart';
-import 'package:frontend_visitas/screens/listado_visitas_estado_screen.dart';
+import 'package:frontend_visitas/screens/crear_cronograma_screen.dart';
+import 'package:frontend_visitas/screens/pendientes_screen.dart';
+import 'package:frontend_visitas/screens/historial_screen.dart';
+import 'package:frontend_visitas/screens/perfil_screen.dart';
 
 class VisitadorDashboard extends StatefulWidget {
   const VisitadorDashboard({super.key});
@@ -16,62 +14,40 @@ class VisitadorDashboard extends StatefulWidget {
 
 class _VisitadorDashboardState extends State<VisitadorDashboard> {
   final ApiService _apiService = ApiService();
-
-  int pendientes = 0;
-  int completadas = 0;
-  String nombreUsuario = '';
-  bool isLoading = true;
+  Map<String, dynamic>? _estadisticas;
+  Map<String, dynamic>? _perfilUsuario;
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    cargarDatos();
+    _cargarDatos();
   }
 
-  Future<void> cargarDatos() async {
-  setState(() => isLoading = true);
-  try {
-    final token = await _apiService.getToken();
-    if (token == null) {
-      throw Exception('No hay token almacenado');
-    }
-    
-    print('🔐 Token obtenido: $token');
-    if (JwtDecoder.isExpired(token)) {
-      throw Exception('Token expirado');
-    }
+  Future<void> _cargarDatos() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
 
-    final decoded = JwtDecoder.decode(token);
-    print('🔍 Token decodificado: $decoded');
-    
-    final userId = decoded['id'];
-    if (userId == null) {
-      throw Exception('El token no contiene ID de usuario');
-    }
+      // Cargar estadísticas y perfil en paralelo
+      final futures = await Future.wait([
+        _apiService.getEstadisticasVisitador(),
+        _apiService.getPerfilUsuario(),
+      ]);
 
-    final visitasPendientes = await _apiService.getMisVisitasPorEstado('pendiente');
-    final visitasCompletadas = await _apiService.getMisVisitasPorEstado('completada');
-
-    setState(() {
-      nombreUsuario = "Visitador #$userId";
-      pendientes = visitasPendientes.length;
-      completadas = visitasCompletadas.length;
-      isLoading = false;
-    });
-  } catch (e) {
-    print("Error cargando datos: $e");
-    setState(() => isLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-    );
-  }
-}
-
-  Future<void> _logout() async {
-    await _apiService.logout();
-    if (mounted) {
-      // Navegamos al login y eliminamos todas las rutas anteriores
-      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      setState(() {
+        _estadisticas = futures[0];
+        _perfilUsuario = futures[1];
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
@@ -79,149 +55,333 @@ class _VisitadorDashboardState extends State<VisitadorDashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Dashboard Visitador"),
+        title: const Text('Dashboard Visitador'),
+        backgroundColor: Colors.blue[600],
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Cerrar sesión',
-            onPressed: _logout,
+            icon: const Icon(Icons.refresh),
+            onPressed: _cargarDatos,
+            tooltip: 'Actualizar',
           ),
         ],
       ),
-      body: isLoading
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Text(
-                      "Bienvenido, $nombreUsuario",
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Resumen de visitas
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildResumenCard('Pendientes', pendientes, Colors.orange),
-                      _buildResumenCard('Completadas', completadas, Colors.green),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  // Aquí va tu GridView con los cards
-                  GridView.count(
-                    shrinkWrap: true,
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    physics: const NeverScrollableScrollPhysics(),
-                    children: [
-                      _DashboardCard(
-                        icon: Icons.add,
-                        title: 'Iniciar nueva visita',
-                        onTap: () => Navigator.pushNamed(context, '/crear-visita'),
-                      ),
-                      _DashboardCard(
-                        icon: Icons.pending_actions,
-                        title: 'Mis visitas pendientes',
-                        onTap: () => Navigator.pushNamed(context, '/pendientes'),
-                      ),
-                      _DashboardCard(
-                        icon: Icons.history,
-                        title: 'Historial de visitas',
-                        onTap: () => Navigator.pushNamed(context, '/historial'),
-                      ),
-                      _DashboardCard(
-                        icon: Icons.person,
-                        title: 'Cronograma PAE',
-                        onTap: () => Navigator.pushNamed(context, '/crear_cronograma'),
-                      ),
-                      _DashboardCard(
-                        icon: Icons.person,
-                        title: 'Mi perfil',
-                        onTap: () => Navigator.pushNamed(context, '/perfil'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  // ...actividad reciente, etc.
-                ],
-              ),
-            ),
+          : _error != null
+              ? _buildErrorWidget()
+              : _buildDashboardContent(),
     );
   }
 
-  Widget _buildResumenCard(String titulo, int cantidad, Color color) {
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ListadoVisitasEstadoScreen(estado: titulo.toLowerCase()),
+  Widget _buildErrorWidget() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          const SizedBox(height: 16),
+          Text(
+            'Error al cargar datos',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.grey[600],
             ),
-          );
-        },
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color),
           ),
-          child: Column(
-            children: [
-              Text(
-                titulo,
-                style: TextStyle(fontSize: 16, color: color, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                cantidad.toString(),
-                style: TextStyle(fontSize: 24, color: color, fontWeight: FontWeight.bold),
-              ),
-            ],
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _cargarDatos,
+            child: const Text('Reintentar'),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDashboardContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Saludo de bienvenida
+          _buildWelcomeCard(),
+          const SizedBox(height: 24),
+          
+          // Resumen rápido - Tarjetas de estadísticas
+          _buildStatisticsCards(),
+          const SizedBox(height: 24),
+          
+          // Menú de acciones principales
+          _buildActionMenu(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWelcomeCard() {
+    final nombre = _perfilUsuario?['nombre'] ?? 'Visitador';
+    
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.person, size: 32, color: Colors.blue),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bienvenido, $nombre',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Rol: ${_perfilUsuario?['rol'] ?? 'Visitador'}',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
-}
 
-// Widget reutilizable para las tarjetas del dashboard
-class _DashboardCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final VoidCallback onTap;
+  Widget _buildStatisticsCards() {
+    final visitasPendientes = _estadisticas?['visitas_pendientes'] ?? 0;
+    final visitasCompletadas = _estadisticas?['visitas_completadas'] ?? 0;
+    final totalVisitas = _estadisticas?['total_visitas'] ?? 0;
 
-  const _DashboardCard({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Resumen Rápido',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
           children: [
-            Icon(icon, size: 40, color: Theme.of(context).primaryColor),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            Expanded(
+              child: _buildStatCard(
+                title: 'Visitas Pendientes',
+                value: visitasPendientes.toString(),
+                icon: Icons.pending_actions,
+                color: Colors.orange,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard(
+                title: 'Visitas Completadas',
+                value: visitasCompletadas.toString(),
+                icon: Icons.check_circle,
+                color: Colors.green,
+              ),
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        _buildStatCard(
+          title: 'Total de Visitas',
+          value: totalVisitas.toString(),
+          icon: Icons.assessment,
+          color: Colors.blue,
+          fullWidth: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+    bool fullWidth = false,
+  }) {
+    return Card(
+      elevation: 2,
+      child: Container(
+        width: fullWidth ? double.infinity : null,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: color),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionMenu() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Acciones Principales',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildActionButton(
+          title: 'Programar Nueva Visita',
+          subtitle: 'Crear una nueva visita desde cero',
+          icon: Icons.add_circle_outline,
+          color: Colors.blue,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CrearCronogramaScreen(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          title: 'Crear Visita con Checklist',
+          subtitle: 'Evaluación completa con checklist dinámico',
+          icon: Icons.checklist,
+          color: Colors.teal,
+          onTap: () {
+            Navigator.pushNamed(context, '/crear_visita_checklist');
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          title: 'Ver Visitas Pendientes',
+          subtitle: 'Lista de visitas asignadas por completar',
+          icon: Icons.pending_actions,
+          color: Colors.orange,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const PendientesScreen(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          title: 'Ver Visitas Completadas',
+          subtitle: 'Historial de trabajo realizado',
+          icon: Icons.history,
+          color: Colors.green,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const HistorialScreen(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          title: 'Mi Perfil',
+          subtitle: 'Información personal y cerrar sesión',
+          icon: Icons.person,
+          color: Colors.purple,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const PerfilScreen(),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 2,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                                 decoration: BoxDecoration(
+                   color: color.withValues(alpha: 0.1),
+                   borderRadius: BorderRadius.circular(8),
+                 ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 16),
+            ],
+          ),
         ),
       ),
     );
