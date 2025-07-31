@@ -55,8 +55,15 @@ class Institucion(Base):
     __tablename__ = "instituciones"
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String, unique=True, nullable=False)
+<<<<<<< HEAD
 
     # Relación para ver todas las sedes de esta institución
+=======
+    municipio_id = Column(Integer, ForeignKey("municipios.id"), nullable=False)
+
+    # Relaciones
+    municipio = relationship("Municipio")
+>>>>>>> frontend
     sedes = relationship("SedeEducativa", back_populates="institucion")
 
 # UNIFICADO: Este modelo ahora combina Sede y SedeEducativa
@@ -68,7 +75,11 @@ class SedeEducativa(Base):
     __tablename__ = "sedes_educativas"
 
     id = Column(Integer, primary_key=True, index=True)
+<<<<<<< HEAD
     nombre = Column(String, nullable=False)
+=======
+    nombre = Column("nombre_sede", String, nullable=False)
+>>>>>>> frontend
     dane = Column(String, unique=True, nullable=False)
     due = Column(String, unique=True, nullable=False)
     lat = Column(Float, nullable=True)
@@ -122,6 +133,10 @@ class CronogramaVisitaPAE(Base):
     fecha_visita = Column(DateTime, nullable=False)
     contrato = Column(String, nullable=False)
     operador = Column(String, nullable=False)
+<<<<<<< HEAD
+=======
+    caso_atencion_prioritaria = Column(String, nullable=True)  # SI, NO, NO HUBO SERVICIO, ACTA RAPIDA
+>>>>>>> frontend
 
     municipio_id = Column(Integer, ForeignKey("municipios.id"))
     institucion_id = Column(Integer, ForeignKey("instituciones.id"))

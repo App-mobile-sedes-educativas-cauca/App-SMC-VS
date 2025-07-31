@@ -50,6 +50,12 @@ class MunicipioOut(BaseModel):
     class Config:
         from_attributes = True
 
+<<<<<<< HEAD
+=======
+# Alias para compatibilidad con el frontend
+MunicipioResponse = MunicipioOut
+
+>>>>>>> frontend
 class InstitucionOut(BaseModel):
     id: int
     nombre: str
@@ -57,6 +63,12 @@ class InstitucionOut(BaseModel):
     class Config:
         from_attributes = True
 
+<<<<<<< HEAD
+=======
+# Alias para compatibilidad con el frontend
+InstitucionResponse = InstitucionOut
+
+>>>>>>> frontend
 # Schema completo para la sede
 class SedeEducativaOut(BaseModel):
     id: int
@@ -81,6 +93,12 @@ class SedeEducativaSimpleOut(BaseModel):
     class Config:
         from_attributes = True
 
+<<<<<<< HEAD
+=======
+# Alias para compatibilidad con el frontend
+SedeResponse = SedeEducativaSimpleOut
+
+>>>>>>> frontend
 # --- Schemas para Visitas ---
 
 class VisitaOut(BaseModel):
@@ -121,4 +139,50 @@ class CronogramaPAECrear(BaseModel):
     institucion_id: int
     sede_id: int
     profesional_id: int
+<<<<<<< HEAD
     evaluaciones: List[EvaluacionPAECrear]
+=======
+    caso_atencion_prioritaria: str  # SI, NO, NO HUBO SERVICIO, ACTA RAPIDA
+    evaluaciones: List[EvaluacionPAECrear] = []  # Lista vacía por defecto
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+
+# --- Schemas para el Checklist ---
+
+class ChecklistItemBase(BaseModel):
+    id: int
+    pregunta_texto: str
+
+    class Config:
+        from_attributes = True
+
+class ChecklistCategoriaBase(BaseModel):
+    id: int
+    nombre: str
+    items: List[ChecklistItemBase] = []  # Una lista de preguntas dentro de cada categoría
+
+    class Config:
+        from_attributes = True
+
+# --- Schemas para Guardar una Visita ---
+
+class VisitaRespuestaCreate(BaseModel):
+    item_id: int  # El ID de la pregunta
+    respuesta: str  # "Cumple", "No Cumple", etc.
+    observacion: Optional[str] = None
+
+class VisitaCreate(BaseModel):
+    # Datos generales de la visita
+    sede_id: int
+    usuario_id: int
+    # ... otros campos generales de la visita que necesites ...
+
+    # La lista de respuestas del checklist
+    respuestas: List[VisitaRespuestaCreate]
+
+    class Config:
+        from_attributes = True
+>>>>>>> frontend
