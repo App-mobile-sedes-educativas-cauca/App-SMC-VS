@@ -264,8 +264,8 @@ class ApiService {
     return response.statusCode == 201;
   }
 
-  // --- CREAR CRONOGRAMA PAE ---
-  Future<bool> crearCronogramaPAE({
+  // --- CREAR VISITA COMPLETA PAE ---
+  Future<bool> crearVisitaCompletaPAE({
     required DateTime fechaVisita,
     required String contrato,
     required String operador,
@@ -274,6 +274,7 @@ class ApiService {
     required int sedeId,
     required int profesionalId,
     required String casoAtencionPrioritaria,
+    Map<int, String>? respuestasChecklist,
   }) async {
     try {
       final token = await getToken();
@@ -281,6 +282,18 @@ class ApiService {
         'Content-Type': 'application/json; charset=UTF-8',
         'Authorization': 'Bearer $token',
       };
+
+      // Preparar las respuestas del checklist
+      List<Map<String, dynamic>> respuestas = [];
+      if (respuestasChecklist != null) {
+        respuestasChecklist.forEach((itemId, respuesta) {
+          respuestas.add({
+            "item_id": itemId,
+            "respuesta": respuesta,
+            "observacion": null
+          });
+        });
+      }
 
       final body = jsonEncode({
         "fecha_visita": fechaVisita.toIso8601String(),
@@ -291,12 +304,14 @@ class ApiService {
         "sede_id": sedeId,
         "profesional_id": profesionalId,
         "caso_atencion_prioritaria": casoAtencionPrioritaria,
+        "respuestas_checklist": respuestas,
       });
 
-      final url = '$baseUrl/api/cronogramas_pae';
+      final url = '$baseUrl/api/visitas-completas-pae';
       print('🔗 Enviando cronograma a: $url');
       print('🔑 Headers: $headers');
       print('📦 Body: $body');
+      print('📋 Respuestas checklist incluidas: ${respuestasChecklist?.length ?? 0} items');
 
       final response = await http.post(
         Uri.parse(url),
@@ -317,7 +332,7 @@ class ApiService {
 
 
   // --- OBTENER CHECKLIST COMPLETO ---
-  Future<List<ChecklistCategoria>> getChecklist() async {
+  Future<List<dynamic>> getChecklist() async {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
@@ -330,7 +345,8 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => ChecklistCategoria.fromJson(json)).toList();
+        print('📊 Checklist cargado: ${data.length} categorías');
+        return data;
       } else {
         // Si el endpoint no existe, usamos datos mock temporales
         print('⚠️ Endpoint /api/checklist no disponible. Usando datos mock...');
@@ -344,213 +360,113 @@ class ApiService {
   }
 
   /// Datos mock temporales para el checklist PAE 2025
-  List<ChecklistCategoria> _getMockChecklist() {
+  List<dynamic> _getMockChecklist() {
     print('🔄 Generando datos mock del checklist PAE 2025...');
     return [
-      ChecklistCategoria(
-        id: 1,
-        nombre: "Personal y Recursos Humanos",
-        descripcion: "Evaluación del personal y recursos humanos del PAE",
-        items: [
-          ChecklistItem(
-            id: 1,
-            nombre: "Número de manipuladoras de alimentos",
-            descripcion: "Verificar que el número de manipuladoras sea suficiente según la cobertura",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 1,
-          ),
-          ChecklistItem(
-            id: 2,
-            nombre: "Personal capacitado en manipulación de alimentos",
-            descripcion: "Verificar que el personal tenga certificaciones vigentes",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 2,
-          ),
-          ChecklistItem(
-            id: 3,
-            nombre: "Personal con elementos de protección",
-            descripcion: "Verificar uso de guantes, gorros, delantales, etc.",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 3,
-          ),
+      {
+        "id": 1,
+        "nombre": "Personal y Recursos Humanos",
+        "items": [
+          {
+            "id": 1,
+            "pregunta_texto": "Número de manipuladoras de alimentos"
+          },
+          {
+            "id": 2,
+            "pregunta_texto": "Personal capacitado en manipulación de alimentos"
+          },
+          {
+            "id": 3,
+            "pregunta_texto": "Personal con elementos de protección"
+          },
         ],
-      ),
-      ChecklistCategoria(
-        id: 2,
-        nombre: "Infraestructura y Equipamiento",
-        descripcion: "Evaluación de la infraestructura y equipamiento",
-        items: [
-          ChecklistItem(
-            id: 4,
-            nombre: "Comedor escolar funcional",
-            descripcion: "Verificar que el comedor esté en buen estado y funcional",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 1,
-          ),
-          ChecklistItem(
-            id: 5,
-            nombre: "Cocina equipada adecuadamente",
-            descripcion: "Verificar equipos de cocina en buen estado",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 2,
-          ),
-          ChecklistItem(
-            id: 6,
-            nombre: "Capacidad del comedor",
-            descripcion: "Evaluar si el comedor puede atender a todos los estudiantes",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 3,
-          ),
+      },
+      {
+        "id": 2,
+        "nombre": "Infraestructura y Equipamiento",
+        "items": [
+          {
+            "id": 4,
+            "pregunta_texto": "Comedor escolar funcional"
+          },
+          {
+            "id": 5,
+            "pregunta_texto": "Cocina equipada adecuadamente"
+          },
+          {
+            "id": 6,
+            "pregunta_texto": "Capacidad del comedor"
+          },
         ],
-      ),
-      ChecklistCategoria(
-        id: 3,
-        nombre: "Gestión y Administración",
-        descripcion: "Evaluación de la gestión y administración del programa",
-        items: [
-          ChecklistItem(
-            id: 7,
-            nombre: "Registros de asistencia actualizados",
-            descripcion: "Verificar que se mantengan registros de asistencia diaria",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 1,
-          ),
-          ChecklistItem(
-            id: 8,
-            nombre: "Cumplimiento del horario establecido",
-            descripcion: "Verificar que se respete el horario de distribución",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 2,
-          ),
-          ChecklistItem(
-            id: 9,
-            nombre: "Documentación del programa",
-            descripcion: "Verificar que exista documentación del programa PAE",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 3,
-          ),
+      },
+      {
+        "id": 3,
+        "nombre": "Gestión y Administración",
+        "items": [
+          {
+            "id": 7,
+            "pregunta_texto": "Registros de asistencia actualizados"
+          },
+          {
+            "id": 8,
+            "pregunta_texto": "Cumplimiento del horario establecido"
+          },
+          {
+            "id": 9,
+            "pregunta_texto": "Documentación del programa"
+          },
         ],
-      ),
-      ChecklistCategoria(
-        id: 4,
-        nombre: "Calidad y Nutrición",
-        descripcion: "Evaluación de la calidad nutricional",
-        items: [
-          ChecklistItem(
-            id: 10,
-            nombre: "Cumplimiento de estándares nutricionales",
-            descripcion: "Verificar que los alimentos cumplan estándares nutricionales",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 1,
-          ),
-          ChecklistItem(
-            id: 11,
-            nombre: "Respeto de porciones establecidas",
-            descripcion: "Verificar que se distribuyan las porciones correctas",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 2,
-          ),
-          ChecklistItem(
-            id: 12,
-            nombre: "Estado de los alimentos",
-            descripcion: "Verificar la frescura y calidad de los alimentos",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 3,
-          ),
+      },
+      {
+        "id": 4,
+        "nombre": "Calidad y Nutrición",
+        "items": [
+          {
+            "id": 10,
+            "pregunta_texto": "Cumplimiento de estándares nutricionales"
+          },
+          {
+            "id": 11,
+            "pregunta_texto": "Respeto de porciones establecidas"
+          },
+          {
+            "id": 12,
+            "pregunta_texto": "Estado de los alimentos"
+          },
         ],
-      ),
-      ChecklistCategoria(
-        id: 5,
-        nombre: "Higiene y Sanitización",
-        descripcion: "Evaluación de la higiene y sanitización",
-        items: [
-          ChecklistItem(
-            id: 13,
-            nombre: "Limpieza del comedor",
-            descripcion: "Verificar que el comedor se mantenga limpio",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 1,
-          ),
-          ChecklistItem(
-            id: 14,
-            nombre: "Sanitización de utensilios",
-            descripcion: "Verificar que los utensilios se saniticen correctamente",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 2,
-          ),
-          ChecklistItem(
-            id: 15,
-            nombre: "Disposición de residuos",
-            descripcion: "Verificar que los residuos se dispongan adecuadamente",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 3,
-          ),
+      },
+      {
+        "id": 5,
+        "nombre": "Higiene y Sanitización",
+        "items": [
+          {
+            "id": 13,
+            "pregunta_texto": "Limpieza del comedor"
+          },
+          {
+            "id": 15,
+            "pregunta_texto": "Disposición de residuos"
+          },
         ],
-      ),
-      ChecklistCategoria(
-        id: 6,
-        nombre: "Cobertura y Logística",
-        descripcion: "Evaluación de la cobertura y logística",
-        items: [
-          ChecklistItem(
-            id: 16,
-            nombre: "Cobertura del programa",
-            descripcion: "Verificar que se atienda a todos los estudiantes elegibles",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 1,
-          ),
-          ChecklistItem(
-            id: 17,
-            nombre: "Almacenamiento de alimentos",
-            descripcion: "Verificar condiciones adecuadas de almacenamiento",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 2,
-          ),
-          ChecklistItem(
-            id: 18,
-            nombre: "Transporte de alimentos",
-            descripcion: "Verificar que el transporte sea adecuado y seguro",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 3,
-          ),
+      },
+      {
+        "id": 6,
+        "nombre": "Cobertura y Logística",
+        "items": [
+          {
+            "id": 16,
+            "pregunta_texto": "Cobertura del programa"
+          },
+          {
+            "id": 17,
+            "pregunta_texto": "Almacenamiento de alimentos"
+          },
+          {
+            "id": 18,
+            "pregunta_texto": "Transporte de alimentos"
+          },
         ],
-      ),
+      },
     ];
   }
 

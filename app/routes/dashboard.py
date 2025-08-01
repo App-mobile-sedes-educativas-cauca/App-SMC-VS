@@ -14,7 +14,7 @@ def dashboard_visitas(
     rol = usuario.rol.nombre
 
     if rol == "visitador":
-        visitas = db.query(models.Visita).filter(models.Visita.usuario_id == usuario.id).all()
+        visitas = db.query(models.VisitaCompletaPAE).filter(models.VisitaCompletaPAE.profesional_id == usuario.id).all()
         return {
             "rol": rol,
             "total": len(visitas),
@@ -23,8 +23,8 @@ def dashboard_visitas(
         }
 
     elif rol == "supervisor":
-        visitas = db.query(models.Visita).join(models.SedeEducativa)\
-            .with_entities(models.SedeEducativa.municipio, models.Visita.id)\
+        visitas = db.query(models.VisitaCompletaPAE).join(models.SedeEducativa)\
+            .with_entities(models.SedeEducativa.municipio, models.VisitaCompletaPAE.id)\
             .all()
         conteo_por_municipio = {}
         for municipio, _ in visitas:
@@ -37,7 +37,7 @@ def dashboard_visitas(
         }
 
     elif rol == "admin":
-        total = db.query(models.Visita).count()
+        total = db.query(models.VisitaCompletaPAE).count()
         return {
             "rol": rol,
             "total_visitas": total,

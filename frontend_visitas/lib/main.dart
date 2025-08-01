@@ -13,7 +13,6 @@ import 'package:frontend_visitas/screens/supervisor_dashboard.dart' as superviso
 import 'screens/crear_cronograma_screen.dart';
 import 'package:frontend_visitas/screens/crear_visita_pae_screen.dart';
 import 'package:frontend_visitas/screens/cronogramas_guardados_screen.dart';
-import 'package:frontend_visitas/screens/crear_visita_checklist_screen.dart';
 import 'package:frontend_visitas/models/institucion.dart';
 
 
@@ -47,7 +46,7 @@ class SMCApp extends StatelessWidget {
         '/crear_cronograma': (context) => CrearCronogramaScreen(),
         '/crear_visita_pae': (context) => const CrearVisitaPAEScreen(),
         '/cronogramas_guardados': (context) => const CronogramasGuardadosScreen(),
-        '/crear_visita_checklist': (context) => const CrearVisitaChecklistScreen(),
+
 
       },
     );

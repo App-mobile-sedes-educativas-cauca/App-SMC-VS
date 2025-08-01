@@ -145,7 +145,7 @@ class _PendientesScreenState extends State<PendientesScreen> {
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _visitas.length,
-        itemBuilder: (context, index) {
+            itemBuilder: (context, index) {
           final visita = _visitas[index];
           return _buildVisitaCard(visita);
         },

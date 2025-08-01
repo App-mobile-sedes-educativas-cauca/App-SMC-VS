@@ -50,12 +50,9 @@ class MunicipioOut(BaseModel):
     class Config:
         from_attributes = True
 
-<<<<<<< HEAD
-=======
 # Alias para compatibilidad con el frontend
 MunicipioResponse = MunicipioOut
 
->>>>>>> frontend
 class InstitucionOut(BaseModel):
     id: int
     nombre: str
@@ -63,12 +60,9 @@ class InstitucionOut(BaseModel):
     class Config:
         from_attributes = True
 
-<<<<<<< HEAD
-=======
 # Alias para compatibilidad con el frontend
 InstitucionResponse = InstitucionOut
 
->>>>>>> frontend
 # Schema completo para la sede
 class SedeEducativaOut(BaseModel):
     id: int
@@ -93,12 +87,9 @@ class SedeEducativaSimpleOut(BaseModel):
     class Config:
         from_attributes = True
 
-<<<<<<< HEAD
-=======
 # Alias para compatibilidad con el frontend
 SedeResponse = SedeEducativaSimpleOut
 
->>>>>>> frontend
 # --- Schemas para Visitas ---
 
 class VisitaOut(BaseModel):
@@ -125,30 +116,36 @@ class EstadoVisitaUpdate(BaseModel):
     estado: str 
 
 
-    # --- Schemas para Cronograma y Evaluación PAE ---
+    # --- Schemas para Guardar una Visita ---
 
-class EvaluacionPAECrear(BaseModel):
-    item: str
-    valor: str  # 1, 2, 0, N/A, N/O
+class VisitaRespuestaCreate(BaseModel):
+    item_id: int  # El ID de la pregunta
+    respuesta: str  # "Cumple", "No Cumple", etc.
+    observacion: Optional[str] = None
 
-class CronogramaPAECrear(BaseModel):
-    fecha_visita: datetime
-    contrato: str
-    operador: str
-    municipio_id: int
-    institucion_id: int
-    sede_id: int
-    profesional_id: int
-<<<<<<< HEAD
-    evaluaciones: List[EvaluacionPAECrear]
-=======
-    caso_atencion_prioritaria: str  # SI, NO, NO HUBO SERVICIO, ACTA RAPIDA
-    evaluaciones: List[EvaluacionPAECrear] = []  # Lista vacía por defecto
-    
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+# NOTA: Los schemas de Cronograma PAE han sido reemplazados por VisitaCompletaPAE
+# Se mantienen comentados por referencia histórica
+
+# class EvaluacionPAECrear(BaseModel):
+#     item: str
+#     valor: str  # 1, 2, 0, N/A, N/O
+# 
+# class CronogramaPAECrear(BaseModel):
+#     fecha_visita: datetime
+#     contrato: str
+#     operador: str
+#     municipio_id: int
+#     institucion_id: int
+#     sede_id: int
+#     profesional_id: int
+#     caso_atencion_prioritaria: str  # SI, NO, NO HUBO SERVICIO, ACTA RAPIDA
+#     evaluaciones: List[EvaluacionPAECrear] = []  # Lista vacía por defecto
+#     respuestas_checklist: List[VisitaRespuestaCreate] = []  # Respuestas del checklist
+#     
+#     class Config:
+#         json_encoders = {
+#             datetime: lambda v: v.isoformat()
+#         }
 
 # --- Schemas para el Checklist ---
 
@@ -167,22 +164,57 @@ class ChecklistCategoriaBase(BaseModel):
     class Config:
         from_attributes = True
 
-# --- Schemas para Guardar una Visita ---
+# --- Schemas para Visita Completa PAE ---
 
-class VisitaRespuestaCreate(BaseModel):
-    item_id: int  # El ID de la pregunta
-    respuesta: str  # "Cumple", "No Cumple", etc.
+class VisitaRespuestaCompletaCreate(BaseModel):
+    item_id: int
+    respuesta: str
     observacion: Optional[str] = None
 
-class VisitaCreate(BaseModel):
-    # Datos generales de la visita
+class VisitaCompletaPAECreate(BaseModel):
+    # Datos del cronograma PAE
+    fecha_visita: datetime
+    contrato: str
+    operador: str
+    caso_atencion_prioritaria: str
+    municipio_id: int
+    institucion_id: int
     sede_id: int
-    usuario_id: int
-    # ... otros campos generales de la visita que necesites ...
+    profesional_id: int
+    
+    # Datos adicionales de la visita
+    observaciones: Optional[str] = None
+    
+    # Respuestas del checklist
+    respuestas_checklist: List[VisitaRespuestaCompletaCreate] = []
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
-    # La lista de respuestas del checklist
-    respuestas: List[VisitaRespuestaCreate]
-
+class VisitaCompletaPAEOut(BaseModel):
+    id: int
+    fecha_visita: datetime
+    contrato: str
+    operador: str
+    caso_atencion_prioritaria: str
+    municipio_id: int
+    institucion_id: int
+    sede_id: int
+    profesional_id: int
+    fecha_creacion: datetime
+    estado: str
+    observaciones: Optional[str]
+    
+    # Información relacionada
+    municipio: MunicipioOut
+    institucion: InstitucionOut
+    sede: SedeEducativaOut
+    profesional: UsuarioOut
+    
+    # Respuestas del checklist
+    respuestas_checklist: List[VisitaRespuestaCreate] = []
+    
     class Config:
         from_attributes = True
->>>>>>> frontend

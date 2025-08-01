@@ -3,8 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app import models
 from app.database import engine
-from app.routes import visitas, sedes, dashboard, auth
-from app.routes import cronograma
+from app.routes import visitas, sedes, dashboard, auth, visitas_completas
 # 1. Crear la instancia de la aplicación
 app = FastAPI(
     title="API de Seguimiento de Sedes Educativas",
@@ -31,7 +30,7 @@ app.include_router(visitas.router, prefix="/api", tags=["Visitas"])
 app.include_router(sedes.router, prefix="/api", tags=["Sedes"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(auth.router)
-app.include_router(cronograma.router, prefix="/api", tags=["Cronograma PAE"])
+app.include_router(visitas_completas.router, prefix="/api", tags=["Visitas Completas PAE"])
 
 # 5. Ruta de Bienvenida
 @app.get("/", tags=["Root"])

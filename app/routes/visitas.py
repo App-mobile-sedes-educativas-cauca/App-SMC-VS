@@ -15,10 +15,6 @@ import os
 from app.dependencies import get_current_user 
 
 router = APIRouter(
-<<<<<<< HEAD
-    prefix="/api",  # Es una buena práctica añadir un prefijo a todas las rutas de la API
-=======
->>>>>>> frontend
     tags=["Visitas y Sedes"] # Agrupa las rutas en la documentación de Swagger
 )
 
@@ -38,8 +34,6 @@ def listar_instituciones(db: Session = Depends(get_db)):
     """
     return db.query(models.Institucion).order_by(models.Institucion.nombre).all()
 
-<<<<<<< HEAD
-=======
 @router.get("/instituciones_por_municipio/{municipio_id}", response_model=List[schemas.InstitucionOut])
 def listar_instituciones_por_municipio(municipio_id: int, db: Session = Depends(get_db)):
     """
@@ -54,7 +48,6 @@ def listar_instituciones_por_municipio(municipio_id: int, db: Session = Depends(
         )
     return instituciones
 
->>>>>>> frontend
 @router.get("/sedes_por_municipio/{municipio_id}", response_model=List[schemas.SedeEducativaSimpleOut])
 def listar_sedes_por_municipio(municipio_id: int, db: Session = Depends(get_db)):
     """
@@ -69,8 +62,6 @@ def listar_sedes_por_municipio(municipio_id: int, db: Session = Depends(get_db))
         )
     return sedes
 
-<<<<<<< HEAD
-=======
 @router.get("/sedes_por_institucion/{institucion_id}", response_model=List[schemas.SedeEducativaSimpleOut])
 def listar_sedes_por_institucion(institucion_id: int, db: Session = Depends(get_db)):
     """
@@ -85,7 +76,6 @@ def listar_sedes_por_institucion(institucion_id: int, db: Session = Depends(get_
         )
     return sedes
 
->>>>>>> frontend
 # --- ENDPOINTS DE VISITAS (CRUD Y LÓGICA DE NEGOCIO) ---
 
 @router.post("/visitas", response_model=schemas.VisitaOut, status_code=status.HTTP_201_CREATED)
@@ -127,31 +117,13 @@ def crear_visita(
         # Guardamos la ruta relativa
         return ruta_completa
 
-    nueva_visita = models.Visita(
-        sede_id=sede_id,
-        usuario_id=usuario.id, # Obtenido del token
-        tipo_asunto=tipo_asunto,
-        observaciones=observaciones,
-        lat=lat,
-        lon=lon,
-        estado="pendiente", # Estado por defecto
-        # Rutas a los archivos guardados
-        foto_evidencia=guardar_archivo(foto_evidencia, "fotos"),
-        video_evidencia=guardar_archivo(video_evidencia, "videos"),
-        audio_evidencia=guardar_archivo(audio_evidencia, "audios"),
-        pdf_evidencia=guardar_archivo(pdf_evidencia, "pdfs"),
-        foto_firma=guardar_archivo(foto_firma, "firmas")
+    # NOTA: Esta función usa el modelo Visita que ya no existe
+    # Se mantiene comentada por compatibilidad histórica
+    # Para crear visitas, usar el endpoint /api/visitas-completas-pae
+    raise HTTPException(
+        status_code=400,
+        detail="Este endpoint está deshabilitado. Use /api/visitas-completas-pae para crear visitas."
     )
-    
-    db.add(nueva_visita)
-    db.commit()
-    db.refresh(nueva_visita)
-    
-    # Para la respuesta, cargamos las relaciones para que el schema Pydantic funcione
-    return db.query(models.Visita).options(
-        joinedload(models.Visita.sede),
-        joinedload(models.Visita.usuario).joinedload(models.Usuario.rol)
-    ).filter(models.Visita.id == nueva_visita.id).first()
 
 
 @router.get("/visitas", response_model=List[schemas.VisitaOut])
@@ -173,30 +145,16 @@ def listar_visitas_para_admin(
     if usuario.rol.nombre != 'admin':
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para ver todas las visitas.")
 
-    query = db.query(models.Visita).options(
-        joinedload(models.Visita.sede).joinedload(models.SedeEducativa.municipio),
-        joinedload(models.Visita.usuario).joinedload(models.Usuario.rol)
-    ).order_by(models.Visita.fecha_creacion.desc())
-
-    # Aplicar filtros
-    if sede_id:
-        query = query.filter(models.Visita.sede_id == sede_id)
-    if estado:
-        query = query.filter(models.Visita.estado.ilike(f"%{estado}%"))
-    if municipio_id:
-        query = query.join(models.SedeEducativa).filter(models.SedeEducativa.municipio_id == municipio_id)
-
-    visitas = query.all()
-    
-    # Reutilizamos la función para construir URLs absolutas
-    for visita in visitas:
-        visita.foto_evidencia = _build_absolute_url(request, visita.foto_evidencia)
-        # ... (repetir para los otros campos de archivo)
-
-    return visitas
+    # NOTA: Este endpoint usa el modelo Visita que ya no existe
+    # Se mantiene comentado por compatibilidad histórica
+    # Para listar visitas, usar el endpoint /api/visitas-completas-pae
+    raise HTTPException(
+        status_code=400,
+        detail="Este endpoint está deshabilitado. Use /api/visitas-completas-pae para listar visitas."
+    )
 
 
-@router.get("/visitas/mis-visitas", response_model=List[schemas.VisitaOut])
+@router.get("/visitas/mis-visitas", response_model=List[schemas.VisitaCompletaPAEOut])
 def listar_mis_visitas(
     request: Request,
     db: Session = Depends(get_db),
@@ -204,23 +162,32 @@ def listar_mis_visitas(
     estado: Optional[str] = Query(None, description="Filtrar por estado: 'pendiente' o 'completada'")
 ):
     """
-    Obtiene la lista de visitas asignadas al usuario actualmente autenticado.
+    Obtiene la lista de visitas completas PAE asignadas al usuario actualmente autenticado.
     """
-    query = db.query(models.Visita).options(
-        joinedload(models.Visita.sede),
-        joinedload(models.Visita.usuario).joinedload(models.Usuario.rol)
-    ).filter(models.Visita.usuario_id == usuario.id).order_by(models.Visita.fecha_creacion.desc())
-    
-    if estado:
-        query = query.filter(models.Visita.estado == estado)
-
-    visitas = query.all()
-
-    for visita in visitas:
-        visita.foto_evidencia = _build_absolute_url(request, visita.foto_evidencia)
-        # ... (repetir para los otros campos de archivo)
-
-    return visitas
+    try:
+        query = db.query(models.VisitaCompletaPAE).options(
+            joinedload(models.VisitaCompletaPAE.municipio),
+            joinedload(models.VisitaCompletaPAE.institucion),
+            joinedload(models.VisitaCompletaPAE.sede),
+            joinedload(models.VisitaCompletaPAE.profesional)
+        ).filter(models.VisitaCompletaPAE.profesional_id == usuario.id)
+        
+        if estado:
+            query = query.filter(models.VisitaCompletaPAE.estado == estado)
+        
+        visitas = query.order_by(models.VisitaCompletaPAE.fecha_creacion.desc()).all()
+        
+        print(f"🔍 Usuario {usuario.id} ({usuario.nombre}) - Encontradas {len(visitas)} visitas")
+        for visita in visitas:
+            print(f"   - Visita ID: {visita.id}, Estado: {visita.estado}")
+        
+        return visitas
+    except Exception as e:
+        print(f"❌ Error al listar mis visitas: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al cargar visitas por estado: {str(e)}"
+        )
 
 
 @router.put("/visitas/{visita_id}/estado", response_model=schemas.VisitaOut)
@@ -233,18 +200,13 @@ def actualizar_estado_visita(
     """
     Actualiza el estado de una visita a 'pendiente' or 'completada'.
     """
-    visita = db.query(models.Visita).filter(models.Visita.id == visita_id).first()
-    if not visita:
-        raise HTTPException(status_code=404, detail="Visita no encontrada")
-    
-    # Opcional: Verificar si el usuario tiene permiso para cambiar el estado
-    if visita.usuario_id != usuario.id and usuario.rol.nombre != 'admin':
-        raise HTTPException(status_code=403, detail="No tienes permiso para modificar esta visita.")
-
-    visita.estado = nuevo_estado.estado
-    db.commit()
-    db.refresh(visita)
-    return visita
+    # NOTA: Este endpoint usa el modelo Visita que ya no existe
+    # Se mantiene comentado por compatibilidad histórica
+    # Para actualizar visitas, usar el endpoint /api/visitas-completas-pae
+    raise HTTPException(
+        status_code=400,
+        detail="Este endpoint está deshabilitado. Use /api/visitas-completas-pae para actualizar visitas."
+    )
 
 
 # --- FUNCIÓN AUXILIAR ---
@@ -252,9 +214,6 @@ def _build_absolute_url(request: Request, file_path: str) -> Optional[str]:
     """Construye una URL absoluta para un archivo de evidencia."""
     if not file_path:
         return None
-<<<<<<< HEAD
-    return str(request.base_url.replace(path=file_path))
-=======
     return str(request.base_url.replace(path=file_path))
 
 # --- ENDPOINTS PARA EL DASHBOARD DEL VISITADOR ---
@@ -268,16 +227,16 @@ def obtener_estadisticas_visitador(
     Obtiene estadísticas del visitador: visitas pendientes y completadas.
     """
     try:
-        # Contar visitas pendientes
-        visitas_pendientes = db.query(models.Visita).filter(
-            models.Visita.usuario_id == usuario.id,
-            models.Visita.estado == "pendiente"
+        # Contar visitas pendientes usando el nuevo modelo
+        visitas_pendientes = db.query(models.VisitaCompletaPAE).filter(
+            models.VisitaCompletaPAE.profesional_id == usuario.id,
+            models.VisitaCompletaPAE.estado == "pendiente"
         ).count()
         
-        # Contar visitas completadas
-        visitas_completadas = db.query(models.Visita).filter(
-            models.Visita.usuario_id == usuario.id,
-            models.Visita.estado == "completada"
+        # Contar visitas completadas usando el nuevo modelo
+        visitas_completadas = db.query(models.VisitaCompletaPAE).filter(
+            models.VisitaCompletaPAE.profesional_id == usuario.id,
+            models.VisitaCompletaPAE.estado == "completada"
         ).count()
         
         return {
@@ -299,7 +258,6 @@ def obtener_perfil_usuario(
     Obtiene el perfil del usuario autenticado.
     """
     return {
-        "id": usuario.id,
         "nombre": usuario.nombre,
         "correo": usuario.correo,
         "rol": usuario.rol.nombre if usuario.rol else None
@@ -310,39 +268,25 @@ def obtener_perfil_usuario(
 @router.get("/checklist", response_model=List[schemas.ChecklistCategoriaBase])
 def get_full_checklist(db: Session = Depends(get_db)):
     """
-    Este endpoint devuelve el checklist completo, con todas las
-    categorías y sus preguntas (ítems) anidados.
-    La app de Flutter llamará a esta ruta para construir el formulario.
+    Obtiene el checklist completo con categorías e items desde la base de datos.
     """
-    # Por ahora, devolvemos datos de ejemplo
-    # En el futuro, esto vendrá de la base de datos
-    checklist_completo = [
-        {
-            "id": 1,
-            "nombre": "Infraestructura",
-            "items": [
-                {"id": 1, "pregunta_texto": "¿La sede tiene acceso a agua potable?"},
-                {"id": 2, "pregunta_texto": "¿Los baños están en buen estado?"},
-                {"id": 3, "pregunta_texto": "¿Hay electricidad en todas las aulas?"}
-            ]
-        },
-        {
-            "id": 2,
-            "nombre": "Seguridad",
-            "items": [
-                {"id": 4, "pregunta_texto": "¿Hay vigilancia en la sede?"},
-                {"id": 5, "pregunta_texto": "¿Los estudiantes están seguros?"}
-            ]
-        }
-    ]
-    
-    if not checklist_completo:
-        raise HTTPException(status_code=404, detail="Checklist no encontrado")
-    return checklist_completo
+    try:
+        # Obtener todas las categorías con sus items
+        categorias = db.query(models.ChecklistCategoria).options(
+            joinedload(models.ChecklistCategoria.items)
+        ).all()
+        
+        return categorias
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al obtener checklist: {str(e)}"
+        )
+
 
 @router.post("/visitas-checklist", status_code=201)
 def create_visita_con_respuestas(
-    visita_data: schemas.VisitaCreate,
+    visita_data: schemas.VisitaCompletaPAECreate,
     db: Session = Depends(get_db),
     usuario: models.Usuario = Depends(get_current_user)
 ):
@@ -351,26 +295,33 @@ def create_visita_con_respuestas(
     del checklist, y los guarda en la base de datos.
     """
     try:
-        # Crear la visita base
-        nueva_visita = models.Visita(
+        # Crear la visita completa PAE
+        nueva_visita_completa = models.VisitaCompletaPAE(
+            fecha_visita=visita_data.fecha_visita,
+            contrato=visita_data.contrato,
+            operador=visita_data.operador,
+            caso_atencion_prioritaria=visita_data.caso_atencion_prioritaria,
+            municipio_id=visita_data.municipio_id,
+            institucion_id=visita_data.institucion_id,
             sede_id=visita_data.sede_id,
-            usuario_id=usuario.id,  # Usar el usuario autenticado
-            estado="pendiente",
-            observaciones="Visita con checklist"
+            profesional_id=visita_data.profesional_id,
+            observaciones=visita_data.observaciones
         )
-        db.add(nueva_visita)
+        db.add(nueva_visita_completa)
         db.flush()  # Para obtener el ID de la visita
         
         # Guardar las respuestas del checklist
-        for respuesta in visita_data.respuestas:
-            # Aquí deberías crear un modelo para las respuestas del checklist
-            # Por ahora, solo guardamos en observaciones
-            nueva_visita.observaciones += f"\nItem {respuesta.item_id}: {respuesta.respuesta}"
-            if respuesta.observacion:
-                nueva_visita.observaciones += f" - {respuesta.observacion}"
+        for respuesta in visita_data.respuestas_checklist:
+            nueva_respuesta = models.VisitaRespuestaCompleta(
+                visita_completa_id=nueva_visita_completa.id,
+                item_id=respuesta.item_id,
+                respuesta=respuesta.respuesta,
+                observacion=respuesta.observacion
+            )
+            db.add(nueva_respuesta)
         
         db.commit()
-        return {"mensaje": "Visita y respuestas guardadas con éxito", "visita_id": nueva_visita.id}
+        return {"mensaje": "Visita completa PAE guardada con éxito", "visita_id": nueva_visita_completa.id, "respuestas_guardadas": len(visita_data.respuestas_checklist)}
         
     except Exception as e:
         db.rollback()
@@ -378,4 +329,3 @@ def create_visita_con_respuestas(
             status_code=500,
             detail=f"Error al guardar la visita: {str(e)}"
         )
->>>>>>> frontend

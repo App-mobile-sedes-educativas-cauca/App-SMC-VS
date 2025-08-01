@@ -35,6 +35,10 @@ class _CrearCronogramaScreenState extends State<CrearCronogramaScreen> {
   int? _profesionalId; // ID del usuario logueado
   String? _casoAtencionPrioritaria; // Campo separado para CASO DE ATENCIÓN PRIORITARIA
 
+  // --- Variables para el Checklist ---
+  List<dynamic>? _checklist;
+  Map<int, String> _respuestasChecklist = {};
+
 
 
   @override
@@ -42,6 +46,8 @@ class _CrearCronogramaScreenState extends State<CrearCronogramaScreen> {
     super.initState();
     // Verificamos autenticación y obtenemos el ID del usuario
     _verificarAutenticacion();
+    // Cargamos el checklist
+    _cargarChecklist();
   }
 
   void _verificarAutenticacion() async {
@@ -73,6 +79,27 @@ class _CrearCronogramaScreenState extends State<CrearCronogramaScreen> {
       setState(() {
         _profesionalId = id;
       });
+    }
+  }
+
+  /// Carga el checklist desde el servidor.
+  void _cargarChecklist() async {
+    try {
+      final checklist = await ApiService().getChecklist();
+      if (mounted) {
+        setState(() {
+          _checklist = checklist;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar checklist: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -135,9 +162,15 @@ class _CrearCronogramaScreenState extends State<CrearCronogramaScreen> {
         state: _currentStep > 2 ? StepState.complete : StepState.indexed,
       ),
       Step(
+        title: const Text('Checklist PAE'),
+        content: _buildStep4(),
+        isActive: _currentStep >= 3,
+        state: _currentStep > 3 ? StepState.complete : StepState.indexed,
+      ),
+      Step(
         title: const Text('Finalizar'),
         content: const Center(child: Text('Revise los datos. Presione "GUARDAR VISITA" para finalizar.')),
-        isActive: _currentStep >= 3,
+        isActive: _currentStep >= 4,
       ),
     ];
   }
@@ -335,7 +368,106 @@ class _CrearCronogramaScreenState extends State<CrearCronogramaScreen> {
     );
   }
 
+  /// Contenido del Step 4: Checklist PAE.
+  Widget _buildStep4() {
+    if (_checklist == null) {
+      return const Center(
+        child: Column(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Cargando checklist...'),
+          ],
+        ),
+      );
+    }
 
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'CHECKLIST PAE',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ..._checklist!.map((categoria) => _buildCategoriaChecklist(categoria)),
+        ],
+      ),
+    );
+  }
+
+  /// Construye una categoría del checklist.
+  Widget _buildCategoriaChecklist(dynamic categoria) {
+    // Verificar que la categoría y sus propiedades no sean null
+    if (categoria == null) return const SizedBox.shrink();
+    
+    final nombre = categoria['nombre'] ?? categoria.nombre ?? 'Sin nombre';
+    final items = categoria['items'] ?? categoria.items ?? [];
+    
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: ExpansionTile(
+        title: Text(
+          nombre.toString(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        children: (items as List).map((item) => _buildItemChecklist(item)).toList(),
+      ),
+    );
+  }
+
+  /// Construye un item del checklist.
+  Widget _buildItemChecklist(dynamic item) {
+    // Verificar que el item y sus propiedades no sean null
+    if (item == null) return const SizedBox.shrink();
+    
+    final pregunta = item['pregunta_texto'] ?? item.pregunta_texto ?? 'Sin pregunta';
+    final id = item['id'] ?? item.id ?? 0;
+    
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            pregunta.toString(),
+            style: const TextStyle(fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            decoration: const InputDecoration(
+              labelText: 'Respuesta',
+              border: OutlineInputBorder(),
+            ),
+            value: _respuestasChecklist[id],
+            items: const [
+              DropdownMenuItem(value: "Cumple", child: Text("✅ Cumple")),
+              DropdownMenuItem(value: "Cumple Parcialmente", child: Text("✔️ Cumple Parcialmente")),
+              DropdownMenuItem(value: "No Cumple", child: Text("❌ No Cumple")),
+              DropdownMenuItem(value: "N/A", child: Text("N/A")),
+              DropdownMenuItem(value: "N/O", child: Text("N/O")),
+            ],
+            onChanged: (value) {
+              setState(() {
+                _respuestasChecklist[id] = value ?? '';
+              });
+            },
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Debe seleccionar una respuesta';
+              }
+              return null;
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   /// Abre el selector de fecha.
   void _pickFechaVisita() async {
@@ -380,7 +512,17 @@ class _CrearCronogramaScreenState extends State<CrearCronogramaScreen> {
       return false;
     }
     
-
+    // Validar que el checklist esté cargado
+    if (_checklist == null) {
+      _mostrarError('El checklist aún se está cargando. Por favor, espera un momento.');
+      return false;
+    }
+    
+    // Validar que al menos un item del checklist tenga respuesta
+    if (_respuestasChecklist.isEmpty) {
+      _mostrarError('Debes completar al menos un item del checklist.');
+      return false;
+    }
     
     return true;
   }
@@ -423,7 +565,8 @@ class _CrearCronogramaScreenState extends State<CrearCronogramaScreen> {
       // Si HAY conexión, intentamos enviar al servidor.
       try {
         print("☁️ Conexión detectada. Enviando al servidor...");
-        await ApiService().crearCronogramaPAE(
+        print("📋 Respuestas del checklist a enviar: $_respuestasChecklist");
+        await ApiService().crearVisitaCompletaPAE(
           fechaVisita: _fechaVisita!,
           contrato: _contrato,
           operador: _operador,
@@ -432,6 +575,7 @@ class _CrearCronogramaScreenState extends State<CrearCronogramaScreen> {
           sedeId: _sedeId!,
           profesionalId: _profesionalId!,
           casoAtencionPrioritaria: _casoAtencionPrioritaria!,
+          respuestasChecklist: _respuestasChecklist,
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

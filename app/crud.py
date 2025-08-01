@@ -37,27 +37,7 @@ def create_visita_y_respuestas(db: Session, visita_data: schemas.VisitaCreate):
     Guarda una visita principal y luego guarda cada una de sus respuestas
     del checklist asociadas.
     """
-    # 1. Crea el registro de la visita principal en la tabla 'visitas'.
-    db_visita = models.Visita(
-        sede_id=visita_data.sede_id,
-        usuario_id=visita_data.usuario_id
-        # ... aquí puedes agregar otros campos de la visita ...
-    )
-    db.add(db_visita)
-    db.commit()  # Confirma la transacción para crear la visita y obtener su ID.
-    db.refresh(db_visita)
-
-    # 2. Itera sobre cada respuesta recibida desde la app.
-    for respuesta_data in visita_data.respuestas:
-        db_respuesta = models.VisitaRespuesta(
-            visita_id=db_visita.id, # Asocia la respuesta a la visita recién creada.
-            item_id=respuesta_data.item_id,
-            respuesta=respuesta_data.respuesta,
-            observacion=respuesta_data.observacion
-        )
-        db.add(db_respuesta)
-    
-    # 3. Confirma la transacción para guardar todas las respuestas.
-    db.commit()
-    
-    return db_visita
+    # NOTA: Esta función usa los modelos Visita y VisitaRespuesta que ya no existen
+    # Se mantiene comentada por compatibilidad histórica
+    # Para crear visitas, usar el endpoint /api/visitas-completas-pae
+    raise Exception("Esta función está deshabilitada. Use /api/visitas-completas-pae para crear visitas.")
