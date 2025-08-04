@@ -5,6 +5,8 @@ import 'package:frontend_visitas/screens/pendientes_screen.dart';
 import 'package:frontend_visitas/screens/historial_screen.dart';
 import 'package:frontend_visitas/screens/visitas_completas_screen.dart';
 import 'package:frontend_visitas/screens/perfil_screen.dart';
+import 'package:frontend_visitas/screens/agenda_personal_screen.dart';
+import 'package:frontend_visitas/screens/notificaciones_screen.dart';
 
 class VisitadorDashboard extends StatefulWidget {
   const VisitadorDashboard({super.key});
@@ -40,8 +42,8 @@ class _VisitadorDashboardState extends State<VisitadorDashboard> {
       ]);
 
       setState(() {
-        _estadisticas = futures[0];
-        _perfilUsuario = futures[1];
+        _estadisticas = futures[0] as Map<String, dynamic>;
+        _perfilUsuario = futures[1] as Map<String, dynamic>;
         _isLoading = false;
       });
     } catch (e) {
@@ -287,6 +289,36 @@ class _VisitadorDashboardState extends State<VisitadorDashboard> {
               context,
               MaterialPageRoute(
                 builder: (context) => const PendientesScreen(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          title: 'Mi Agenda',
+          subtitle: 'Calendario visual de visitas programadas',
+          icon: Icons.calendar_today,
+          color: Colors.indigo,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AgendaPersonalScreen(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          title: 'Alertas',
+          subtitle: 'Notificaciones y recordatorios de visitas',
+          icon: Icons.notifications_active,
+          color: Colors.red,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const NotificacionesScreen(),
               ),
             );
           },

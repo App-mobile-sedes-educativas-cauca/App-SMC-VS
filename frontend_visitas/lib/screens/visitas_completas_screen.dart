@@ -49,6 +49,11 @@ class _VisitasCompletasScreenState extends State<VisitasCompletasScreen> {
       ];
 
       setState(() {
+      // Usar el endpoint real del backend
+      final visitas = await _apiService.getVisitasCompletas();
+      
+      setState(() {
+        _visitas = visitas;
         _isLoading = false;
       });
     } catch (e) {
@@ -66,6 +71,11 @@ class _VisitasCompletasScreenState extends State<VisitasCompletasScreen> {
         SnackBar(
           content: Text('Descargando Excel para visita #$visitaId...'),
           backgroundColor: Colors.blue,
+      await _apiService.descargarExcelVisita(visitaId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Excel descargado exitosamente para visita #$visitaId'),
+          backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
@@ -298,6 +308,53 @@ class _VisitasCompletasScreenState extends State<VisitasCompletasScreen> {
         content: Text('Ver detalles de visita #${visita['id']}'),
         backgroundColor: Colors.blue,
       ),
+    // Mostrar un diálogo con los detalles de la visita
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Detalles de Visita #${visita['id']}'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildInfoRow('Fecha Visita', _formatDate(visita['fecha_visita'])),
+                _buildInfoRow('Contrato', visita['contrato']),
+                _buildInfoRow('Operador', visita['operador']),
+                _buildInfoRow('Caso Prioritaria', visita['caso_atencion_prioritaria']),
+                _buildInfoRow('Municipio', visita['municipio']['nombre']),
+                _buildInfoRow('Institución', visita['institucion']['nombre']),
+                _buildInfoRow('Sede', visita['sede']['nombre']),
+                _buildInfoRow('Profesional', visita['profesional']['nombre']),
+                _buildInfoRow('Estado', visita['estado']),
+                _buildInfoRow('Respuestas Checklist', '${visita['respuestas_checklist'].length} items'),
+                const SizedBox(height: 16),
+                const Text(
+                  'Respuestas del Checklist:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                ...visita['respuestas_checklist'].map<Widget>((respuesta) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      '• Item ${respuesta['item_id']}: ${respuesta['respuesta']}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        );
+      },
     );
   }
 } 

@@ -57,6 +57,9 @@ def crear_visita_completa_pae(
             sede_id=datos.sede_id,
             profesional_id=datos.profesional_id,
             observaciones=datos.observaciones
+
+            observaciones=datos.observaciones,
+            estado="pendiente"  # Por defecto se crea como pendiente
         )
         
         db.add(visita_completa)
@@ -114,6 +117,38 @@ def listar_visitas_completas_pae(
         raise HTTPException(
             status_code=500,
             detail=f"Error al listar visitas completas: {str(e)}"
+        )
+
+@router.get("/visitas-completas-pae/pendientes", response_model=List[schemas.VisitaCompletaPAEOut])
+def listar_visitas_pendientes(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_user)
+):
+    """
+    Lista solo las visitas pendientes PAE
+    """
+    try:
+        # Obtener solo las visitas pendientes con relaciones cargadas
+        visitas = db.query(models.VisitaCompletaPAE).filter(
+            models.VisitaCompletaPAE.estado == "pendiente"
+        ).options(
+            joinedload(models.VisitaCompletaPAE.municipio),
+            joinedload(models.VisitaCompletaPAE.institucion),
+            joinedload(models.VisitaCompletaPAE.sede),
+            joinedload(models.VisitaCompletaPAE.profesional),
+            joinedload(models.VisitaCompletaPAE.respuestas_checklist)
+        ).all()
+        
+        print(f"🔍 Encontradas {len(visitas)} visitas pendientes PAE")
+        for visita in visitas:
+            print(f"   - Visita ID: {visita.id}, Estado: {visita.estado}, Profesional: {visita.profesional.nombre if visita.profesional else 'N/A'}")
+        
+        return visitas
+    except Exception as e:
+        print(f"❌ Error al listar visitas pendientes: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al listar visitas pendientes: {str(e)}"
         )
 
 @router.get("/visitas-completas-pae/{visita_id}", response_model=schemas.VisitaCompletaPAEOut)
@@ -237,4 +272,50 @@ def generar_excel_visita_completa(
         BytesIO(excel_data),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename=visita_completa_pae_{visita_id}.xlsx"}
-    ) 
+    )
+
+@router.put("/visitas-completas-pae/{visita_id}/estado")
+def actualizar_estado_visita(
+    visita_id: int,
+    estado: str,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_user)
+):
+    """
+    Actualiza el estado de una visita (pendiente -> completada)
+    """
+    try:
+        # Buscar la visita
+        visita = db.query(models.VisitaCompletaPAE).filter(
+            models.VisitaCompletaPAE.id == visita_id
+        ).first()
+        
+        if not visita:
+            raise HTTPException(status_code=404, detail="Visita no encontrada")
+        
+        # Validar que el estado sea válido
+        estados_validos = ["pendiente", "completada", "cancelada"]
+        if estado not in estados_validos:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Estado inválido. Estados válidos: {estados_validos}"
+            )
+        
+        # Actualizar el estado
+        visita.estado = estado
+        db.commit()
+        
+        print(f"✅ Visita {visita_id} actualizada a estado: {estado}")
+        
+        return {
+            "mensaje": f"Visita {visita_id} actualizada a estado: {estado}",
+            "visita_id": visita_id,
+            "estado": estado
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al actualizar estado de la visita: {str(e)}"
+        ) 

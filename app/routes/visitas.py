@@ -37,44 +37,29 @@ def listar_instituciones(db: Session = Depends(get_db)):
 @router.get("/instituciones_por_municipio/{municipio_id}", response_model=List[schemas.InstitucionOut])
 def listar_instituciones_por_municipio(municipio_id: int, db: Session = Depends(get_db)):
     """
-    Obtiene las instituciones educativas filtrando por el ID del municipio.
+    Obtiene las instituciones educativas de un municipio específico.
     """
-    instituciones = db.query(models.Institucion).filter(models.Institucion.municipio_id == municipio_id).order_by(models.Institucion.nombre).all()
-    
-    if not instituciones:
-        raise HTTPException(
-            status_code=404, 
-            detail="No se encontraron instituciones para el municipio especificado."
-        )
-    return instituciones
+    return db.query(models.Institucion).filter(
+        models.Institucion.municipio_id == municipio_id
+    ).order_by(models.Institucion.nombre).all()
 
 @router.get("/sedes_por_municipio/{municipio_id}", response_model=List[schemas.SedeEducativaSimpleOut])
 def listar_sedes_por_municipio(municipio_id: int, db: Session = Depends(get_db)):
     """
-    Obtiene las sedes educativas filtrando por el ID del municipio.
+    Obtiene las sedes educativas de un municipio específico.
     """
-    sedes = db.query(models.SedeEducativa).filter(models.SedeEducativa.municipio_id == municipio_id).order_by(models.SedeEducativa.nombre).all()
-    
-    if not sedes:
-        raise HTTPException(
-            status_code=404, 
-            detail="No se encontraron sedes para el municipio especificado."
-        )
-    return sedes
+    return db.query(models.SedeEducativa).filter(
+        models.SedeEducativa.municipio_id == municipio_id
+    ).order_by(models.SedeEducativa.nombre).all()
 
 @router.get("/sedes_por_institucion/{institucion_id}", response_model=List[schemas.SedeEducativaSimpleOut])
 def listar_sedes_por_institucion(institucion_id: int, db: Session = Depends(get_db)):
     """
-    Obtiene las sedes educativas filtrando por el ID de la institución.
+    Obtiene las sedes educativas de una institución específica.
     """
-    sedes = db.query(models.SedeEducativa).filter(models.SedeEducativa.institucion_id == institucion_id).order_by(models.SedeEducativa.nombre).all()
-    
-    if not sedes:
-        raise HTTPException(
-            status_code=404, 
-            detail="No se encontraron sedes para la institución especificada."
-        )
-    return sedes
+    return db.query(models.SedeEducativa).filter(
+        models.SedeEducativa.institucion_id == institucion_id
+    ).order_by(models.SedeEducativa.nombre).all()
 
 # --- ENDPOINTS DE VISITAS (CRUD Y LÓGICA DE NEGOCIO) ---
 
@@ -153,6 +138,52 @@ def listar_visitas_para_admin(
         detail="Este endpoint está deshabilitado. Use /api/visitas-completas-pae para listar visitas."
     )
 
+
+@router.get("/visitas/todas", response_model=List[schemas.VisitaCompletaPAEOut])
+def listar_todas_visitas(
+    request: Request,
+    db: Session = Depends(get_db),
+    usuario: models.Usuario = Depends(get_current_user)
+):
+    """
+    Obtiene todas las visitas completas PAE. Solo para supervisores y administradores.
+    """
+    try:
+        # Verificar permisos
+        if usuario.rol.nombre not in ['supervisor', 'admin']:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="No tienes permiso para ver todas las visitas."
+            )
+        
+        # Obtener todas las visitas con relaciones cargadas
+        query = db.query(models.VisitaCompletaPAE).options(
+            joinedload(models.VisitaCompletaPAE.municipio),
+            joinedload(models.VisitaCompletaPAE.institucion),
+            joinedload(models.VisitaCompletaPAE.sede),
+            joinedload(models.VisitaCompletaPAE.profesional)
+        )
+        
+        # Si es supervisor, mostrar solo visitas de su área
+        if usuario.rol.nombre == 'supervisor':
+            # Por ahora, mostrar todas las visitas para supervisores
+            # En el futuro se puede filtrar por área geográfica
+            pass
+        
+        visitas = query.order_by(models.VisitaCompletaPAE.fecha_creacion.desc()).all()
+        
+        print(f"🔍 Usuario {usuario.id} ({usuario.nombre}) - Encontradas {len(visitas)} visitas totales")
+        for visita in visitas:
+            print(f"   - Visita ID: {visita.id}, Estado: {visita.estado}, Profesional: {visita.profesional.nombre}")
+        
+        return visitas
+    except Exception as e:
+        print(f"❌ Error al listar todas las visitas: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al cargar todas las visitas: {str(e)}"
+        )
+>>>>>>> BACKEND-FRONTEND
 
 @router.get("/visitas/mis-visitas", response_model=List[schemas.VisitaCompletaPAEOut])
 def listar_mis_visitas(

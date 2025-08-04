@@ -8,12 +8,18 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:frontend_visitas/models/municipio.dart';
 import 'package:frontend_visitas/models/institucion.dart';
 import 'package:frontend_visitas/models/sede.dart';
+import 'package:frontend_visitas/models/visita.dart';
 import 'package:frontend_visitas/services/api_service.dart';
 import 'package:frontend_visitas/local/db_helper.dart';
 
 
 class CrearCronogramaScreen extends StatefulWidget {
-  const CrearCronogramaScreen({super.key});
+  final dynamic? visitaExistente; // Visita completa PAE existente para editar
+  
+  const CrearCronogramaScreen({
+    super.key,
+    this.visitaExistente,
+  });
 
   @override
   State<CrearCronogramaScreen> createState() => _CrearCronogramaScreenState();
@@ -48,6 +54,33 @@ class _CrearCronogramaScreenState extends State<CrearCronogramaScreen> {
     _verificarAutenticacion();
     // Cargamos el checklist
     _cargarChecklist();
+    // Si hay una visita existente, cargamos sus datos
+    if (widget.visitaExistente != null) {
+      _cargarDatosVisitaExistente();
+    }
+  }
+
+  /// Carga los datos de una visita existente
+  void _cargarDatosVisitaExistente() {
+    final visita = widget.visitaExistente!;
+    setState(() {
+      _fechaVisita = DateTime.parse(visita['fecha_visita']);
+      _contrato = visita['contrato'] ?? '';
+      _operador = visita['operador'] ?? '';
+      _municipioId = visita['municipio_id'];
+      _institucionId = visita['institucion_id'];
+      _sedeId = visita['sede_id'];
+      _profesionalId = visita['profesional_id'];
+      _casoAtencionPrioritaria = visita['caso_atencion_prioritaria'];
+      
+      // Cargar respuestas del checklist si existen
+      if (visita['respuestas_checklist'] != null) {
+        final respuestas = visita['respuestas_checklist'] as List;
+        for (var respuesta in respuestas) {
+          _respuestasChecklist[respuesta['item_id']] = respuesta['respuesta'];
+        }
+      }
+    });
   }
 
   void _verificarAutenticacion() async {

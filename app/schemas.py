@@ -87,6 +87,20 @@ class SedeEducativaSimpleOut(BaseModel):
     class Config:
         from_attributes = True
 
+# Schema para crear sedes educativas
+class SedeEducativaCreate(BaseModel):
+    nombre: str
+    dane: str
+    due: str
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    principal: bool = False
+    municipio_id: int
+    institucion_id: int
+
+    class Config:
+        from_attributes = True
+
 # Alias para compatibilidad con el frontend
 SedeResponse = SedeEducativaSimpleOut
 
