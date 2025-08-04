@@ -35,7 +35,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
+    setState(() {
         _error = e.toString();
         _isLoading = false;
       });
@@ -194,11 +194,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       Text(
                         'Información Personal',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
                         'Datos de tu cuenta',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Colors.grey[600],
@@ -251,11 +251,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       Text(
                         'Información del Rol',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
                         'Tu rol en el sistema',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Colors.grey[600],
@@ -283,7 +283,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
           child: Text(
             label,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w500,
               color: Colors.grey[700],
             ),
           ),
@@ -331,11 +331,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       Text(
                         'Cerrar Sesión',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
                         'Salir de la aplicación de forma segura',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Colors.grey[600],

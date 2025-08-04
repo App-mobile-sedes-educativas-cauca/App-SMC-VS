@@ -3,7 +3,10 @@ import 'package:frontend_visitas/services/api_service.dart';
 import 'package:frontend_visitas/screens/crear_cronograma_screen.dart';
 import 'package:frontend_visitas/screens/pendientes_screen.dart';
 import 'package:frontend_visitas/screens/historial_screen.dart';
+import 'package:frontend_visitas/screens/visitas_completas_screen.dart';
 import 'package:frontend_visitas/screens/perfil_screen.dart';
+import 'package:frontend_visitas/screens/agenda_personal_screen.dart';
+import 'package:frontend_visitas/screens/notificaciones_screen.dart';
 
 class VisitadorDashboard extends StatefulWidget {
   const VisitadorDashboard({super.key});
@@ -39,8 +42,8 @@ class _VisitadorDashboardState extends State<VisitadorDashboard> {
       ]);
 
       setState(() {
-        _estadisticas = futures[0];
-        _perfilUsuario = futures[1];
+        _estadisticas = futures[0] as Map<String, dynamic>;
+        _perfilUsuario = futures[1] as Map<String, dynamic>;
         _isLoading = false;
       });
     } catch (e) {
@@ -275,17 +278,7 @@ class _VisitadorDashboardState extends State<VisitadorDashboard> {
             );
           },
         ),
-        const SizedBox(height: 12),
-        _buildActionButton(
-          title: 'Crear Visita con Checklist',
-          subtitle: 'Evaluación completa con checklist dinámico',
-          icon: Icons.checklist,
-          color: Colors.teal,
-          onTap: () {
-            Navigator.pushNamed(context, '/crear_visita_checklist');
-          },
-        ),
-        const SizedBox(height: 12),
+
         _buildActionButton(
           title: 'Ver Visitas Pendientes',
           subtitle: 'Lista de visitas asignadas por completar',
@@ -296,6 +289,51 @@ class _VisitadorDashboardState extends State<VisitadorDashboard> {
               context,
               MaterialPageRoute(
                 builder: (context) => const PendientesScreen(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          title: 'Mi Agenda',
+          subtitle: 'Calendario visual de visitas programadas',
+          icon: Icons.calendar_today,
+          color: Colors.indigo,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AgendaPersonalScreen(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          title: 'Alertas',
+          subtitle: 'Notificaciones y recordatorios de visitas',
+          icon: Icons.notifications_active,
+          color: Colors.red,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const NotificacionesScreen(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          title: 'Visitas Completas PAE',
+          subtitle: 'Ver y descargar reportes Excel',
+          icon: Icons.assignment,
+          color: Colors.purple,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const VisitasCompletasScreen(),
               ),
             );
           },

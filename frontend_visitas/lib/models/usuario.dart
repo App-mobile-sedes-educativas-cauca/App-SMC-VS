@@ -1,24 +1,51 @@
-import 'package:frontend_visitas/models/rol.dart';
-
 class Usuario {
   final int id;
   final String nombre;
   final String correo;
-  final Rol rol;
+  final String? rol;
+  final bool? activo;
+  final DateTime? fechaCreacion;
 
   Usuario({
     required this.id,
     required this.nombre,
     required this.correo,
-    required this.rol,
+    this.rol,
+    this.activo,
+    this.fechaCreacion,
   });
 
   factory Usuario.fromJson(Map<String, dynamic> json) {
+    // Extraer el nombre del rol del objeto anidado
+    String? rolNombre;
+    if (json['rol'] != null) {
+      if (json['rol'] is String) {
+        rolNombre = json['rol'];
+      } else if (json['rol'] is Map<String, dynamic>) {
+        rolNombre = json['rol']['nombre'];
+      }
+    }
+
     return Usuario(
       id: json['id'],
       nombre: json['nombre'],
       correo: json['correo'],
-      rol: Rol.fromJson(json['rol']),
+      rol: rolNombre,
+      activo: json['activo'],
+      fechaCreacion: json['fecha_creacion'] != null 
+          ? DateTime.parse(json['fecha_creacion']) 
+          : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'nombre': nombre,
+      'correo': correo,
+      'rol': rol,
+      'activo': activo,
+      'fecha_creacion': fechaCreacion?.toIso8601String(),
+    };
   }
 }

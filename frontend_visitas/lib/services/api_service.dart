@@ -10,12 +10,15 @@ import 'package:frontend_visitas/models/visita.dart';
 import 'package:frontend_visitas/models/municipio.dart';
 import 'package:frontend_visitas/models/sede.dart';
 import 'package:frontend_visitas/models/institucion.dart';
+import 'package:frontend_visitas/models/usuario.dart';
 
 import 'package:frontend_visitas/models/evaluacion_item.dart';
 import 'package:frontend_visitas/models/item_pae.dart';
 import 'package:frontend_visitas/models/checklist_categoria.dart';
 import 'package:frontend_visitas/models/checklist_item.dart';
 import 'package:frontend_visitas/models/visita_respuesta.dart';
+
+import 'dart:html' as html;
 
 class ApiService {
   // --- MÉTODOS AUXILIARES ---
@@ -264,8 +267,8 @@ class ApiService {
     return response.statusCode == 201;
   }
 
-  // --- CREAR CRONOGRAMA PAE ---
-  Future<bool> crearCronogramaPAE({
+  // --- CREAR VISITA COMPLETA PAE ---
+  Future<bool> crearVisitaCompletaPAE({
     required DateTime fechaVisita,
     required String contrato,
     required String operador,
@@ -274,6 +277,7 @@ class ApiService {
     required int sedeId,
     required int profesionalId,
     required String casoAtencionPrioritaria,
+    Map<int, String>? respuestasChecklist,
   }) async {
     try {
       final token = await getToken();
@@ -281,6 +285,18 @@ class ApiService {
         'Content-Type': 'application/json; charset=UTF-8',
         'Authorization': 'Bearer $token',
       };
+
+      // Preparar las respuestas del checklist
+      List<Map<String, dynamic>> respuestas = [];
+      if (respuestasChecklist != null) {
+        respuestasChecklist.forEach((itemId, respuesta) {
+          respuestas.add({
+            "item_id": itemId,
+            "respuesta": respuesta,
+            "observacion": null
+          });
+        });
+      }
 
       final body = jsonEncode({
         "fecha_visita": fechaVisita.toIso8601String(),
@@ -291,12 +307,14 @@ class ApiService {
         "sede_id": sedeId,
         "profesional_id": profesionalId,
         "caso_atencion_prioritaria": casoAtencionPrioritaria,
+        "respuestas_checklist": respuestas,
       });
 
-      final url = '$baseUrl/api/cronogramas_pae';
+      final url = '$baseUrl/api/visitas-completas-pae';
       print('🔗 Enviando cronograma a: $url');
       print('🔑 Headers: $headers');
       print('📦 Body: $body');
+      print('📋 Respuestas checklist incluidas: ${respuestasChecklist?.length ?? 0} items');
 
       final response = await http.post(
         Uri.parse(url),
@@ -317,7 +335,7 @@ class ApiService {
 
 
   // --- OBTENER CHECKLIST COMPLETO ---
-  Future<List<ChecklistCategoria>> getChecklist() async {
+  Future<List<dynamic>> getChecklist() async {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
@@ -330,7 +348,8 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => ChecklistCategoria.fromJson(json)).toList();
+        print('📊 Checklist cargado: ${data.length} categorías');
+        return data;
       } else {
         // Si el endpoint no existe, usamos datos mock temporales
         print('⚠️ Endpoint /api/checklist no disponible. Usando datos mock...');
@@ -344,213 +363,113 @@ class ApiService {
   }
 
   /// Datos mock temporales para el checklist PAE 2025
-  List<ChecklistCategoria> _getMockChecklist() {
+  List<dynamic> _getMockChecklist() {
     print('🔄 Generando datos mock del checklist PAE 2025...');
     return [
-      ChecklistCategoria(
-        id: 1,
-        nombre: "Personal y Recursos Humanos",
-        descripcion: "Evaluación del personal y recursos humanos del PAE",
-        items: [
-          ChecklistItem(
-            id: 1,
-            nombre: "Número de manipuladoras de alimentos",
-            descripcion: "Verificar que el número de manipuladoras sea suficiente según la cobertura",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 1,
-          ),
-          ChecklistItem(
-            id: 2,
-            nombre: "Personal capacitado en manipulación de alimentos",
-            descripcion: "Verificar que el personal tenga certificaciones vigentes",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 2,
-          ),
-          ChecklistItem(
-            id: 3,
-            nombre: "Personal con elementos de protección",
-            descripcion: "Verificar uso de guantes, gorros, delantales, etc.",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 3,
-          ),
+      {
+        "id": 1,
+        "nombre": "Personal y Recursos Humanos",
+        "items": [
+          {
+            "id": 1,
+            "pregunta_texto": "Número de manipuladoras de alimentos"
+          },
+          {
+            "id": 2,
+            "pregunta_texto": "Personal capacitado en manipulación de alimentos"
+          },
+          {
+            "id": 3,
+            "pregunta_texto": "Personal con elementos de protección"
+          },
         ],
-      ),
-      ChecklistCategoria(
-        id: 2,
-        nombre: "Infraestructura y Equipamiento",
-        descripcion: "Evaluación de la infraestructura y equipamiento",
-        items: [
-          ChecklistItem(
-            id: 4,
-            nombre: "Comedor escolar funcional",
-            descripcion: "Verificar que el comedor esté en buen estado y funcional",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 1,
-          ),
-          ChecklistItem(
-            id: 5,
-            nombre: "Cocina equipada adecuadamente",
-            descripcion: "Verificar equipos de cocina en buen estado",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 2,
-          ),
-          ChecklistItem(
-            id: 6,
-            nombre: "Capacidad del comedor",
-            descripcion: "Evaluar si el comedor puede atender a todos los estudiantes",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 3,
-          ),
+      },
+      {
+        "id": 2,
+        "nombre": "Infraestructura y Equipamiento",
+        "items": [
+          {
+            "id": 4,
+            "pregunta_texto": "Comedor escolar funcional"
+          },
+          {
+            "id": 5,
+            "pregunta_texto": "Cocina equipada adecuadamente"
+          },
+          {
+            "id": 6,
+            "pregunta_texto": "Capacidad del comedor"
+          },
         ],
-      ),
-      ChecklistCategoria(
-        id: 3,
-        nombre: "Gestión y Administración",
-        descripcion: "Evaluación de la gestión y administración del programa",
-        items: [
-          ChecklistItem(
-            id: 7,
-            nombre: "Registros de asistencia actualizados",
-            descripcion: "Verificar que se mantengan registros de asistencia diaria",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 1,
-          ),
-          ChecklistItem(
-            id: 8,
-            nombre: "Cumplimiento del horario establecido",
-            descripcion: "Verificar que se respete el horario de distribución",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 2,
-          ),
-          ChecklistItem(
-            id: 9,
-            nombre: "Documentación del programa",
-            descripcion: "Verificar que exista documentación del programa PAE",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 3,
-          ),
+      },
+      {
+        "id": 3,
+        "nombre": "Gestión y Administración",
+        "items": [
+          {
+            "id": 7,
+            "pregunta_texto": "Registros de asistencia actualizados"
+          },
+          {
+            "id": 8,
+            "pregunta_texto": "Cumplimiento del horario establecido"
+          },
+          {
+            "id": 9,
+            "pregunta_texto": "Documentación del programa"
+          },
         ],
-      ),
-      ChecklistCategoria(
-        id: 4,
-        nombre: "Calidad y Nutrición",
-        descripcion: "Evaluación de la calidad nutricional",
-        items: [
-          ChecklistItem(
-            id: 10,
-            nombre: "Cumplimiento de estándares nutricionales",
-            descripcion: "Verificar que los alimentos cumplan estándares nutricionales",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 1,
-          ),
-          ChecklistItem(
-            id: 11,
-            nombre: "Respeto de porciones establecidas",
-            descripcion: "Verificar que se distribuyan las porciones correctas",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 2,
-          ),
-          ChecklistItem(
-            id: 12,
-            nombre: "Estado de los alimentos",
-            descripcion: "Verificar la frescura y calidad de los alimentos",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 3,
-          ),
+      },
+      {
+        "id": 4,
+        "nombre": "Calidad y Nutrición",
+        "items": [
+          {
+            "id": 10,
+            "pregunta_texto": "Cumplimiento de estándares nutricionales"
+          },
+          {
+            "id": 11,
+            "pregunta_texto": "Respeto de porciones establecidas"
+          },
+          {
+            "id": 12,
+            "pregunta_texto": "Estado de los alimentos"
+          },
         ],
-      ),
-      ChecklistCategoria(
-        id: 5,
-        nombre: "Higiene y Sanitización",
-        descripcion: "Evaluación de la higiene y sanitización",
-        items: [
-          ChecklistItem(
-            id: 13,
-            nombre: "Limpieza del comedor",
-            descripcion: "Verificar que el comedor se mantenga limpio",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 1,
-          ),
-          ChecklistItem(
-            id: 14,
-            nombre: "Sanitización de utensilios",
-            descripcion: "Verificar que los utensilios se saniticen correctamente",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 2,
-          ),
-          ChecklistItem(
-            id: 15,
-            nombre: "Disposición de residuos",
-            descripcion: "Verificar que los residuos se dispongan adecuadamente",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 3,
-          ),
+      },
+      {
+        "id": 5,
+        "nombre": "Higiene y Sanitización",
+        "items": [
+          {
+            "id": 13,
+            "pregunta_texto": "Limpieza del comedor"
+          },
+          {
+            "id": 15,
+            "pregunta_texto": "Disposición de residuos"
+          },
         ],
-      ),
-      ChecklistCategoria(
-        id: 6,
-        nombre: "Cobertura y Logística",
-        descripcion: "Evaluación de la cobertura y logística",
-        items: [
-          ChecklistItem(
-            id: 16,
-            nombre: "Cobertura del programa",
-            descripcion: "Verificar que se atienda a todos los estudiantes elegibles",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 1,
-          ),
-          ChecklistItem(
-            id: 17,
-            nombre: "Almacenamiento de alimentos",
-            descripcion: "Verificar condiciones adecuadas de almacenamiento",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 2,
-          ),
-          ChecklistItem(
-            id: 18,
-            nombre: "Transporte de alimentos",
-            descripcion: "Verificar que el transporte sea adecuado y seguro",
-            tipo: "opciones",
-            opciones: ["✅ Cumple", "✔️ Cumple Parcialmente", "❌ No Cumple", "N/A", "N/O"],
-            requerido: true,
-            orden: 3,
-          ),
+      },
+      {
+        "id": 6,
+        "nombre": "Cobertura y Logística",
+        "items": [
+          {
+            "id": 16,
+            "pregunta_texto": "Cobertura del programa"
+          },
+          {
+            "id": 17,
+            "pregunta_texto": "Almacenamiento de alimentos"
+          },
+          {
+            "id": 18,
+            "pregunta_texto": "Transporte de alimentos"
+          },
         ],
-      ),
+      },
     ];
   }
 
@@ -878,6 +797,369 @@ class ApiService {
     }
   }
 
+  // --- DASHBOARD DEL SUPERVISOR ---
+  Future<Map<String, dynamic>> getEstadisticasSupervisor() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/dashboard/supervisor/estadisticas'),
+        headers: headers,
+      );
+
+      print('🔗 Obteniendo estadísticas supervisor desde: $baseUrl/api/dashboard/supervisor/estadisticas');
+      print('📌 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('📊 Datos reales obtenidos: $data');
+        return data;
+      } else {
+        print('❌ Error al obtener estadísticas: ${response.statusCode} - ${response.body}');
+        throw Exception('Error al obtener estadísticas del supervisor. Código: ${response.statusCode}, Respuesta: ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error en getEstadisticasSupervisor: $e');
+      throw Exception('Error al obtener estadísticas del supervisor: $e');
+    }
+  }
+
+  // --- TODAS LAS VISITAS (SUPERVISOR) ---
+  Future<List<Visita>> getTodasVisitas() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/visitas/todas'),
+        headers: headers,
+      );
+
+      print('🔗 Obteniendo todas las visitas desde: $baseUrl/api/visitas/todas');
+      print('📌 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Visita.fromJson(json)).toList();
+      } else {
+        throw Exception('Error al cargar todas las visitas. Código: ${response.statusCode}, Respuesta: ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error en getTodasVisitas: $e');
+      throw Exception('Error al cargar todas las visitas: $e');
+    }
+  }
+
+  // --- GENERAR REPORTES ---
+  Future<void> generarReporte(Map<String, dynamic> parametros) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/reportes/generar'),
+        headers: headers,
+        body: jsonEncode(parametros),
+      );
+
+      print('🔗 Generando reporte en: $baseUrl/api/reportes/generar');
+      print('📌 Status: ${response.statusCode}');
+
+      if (response.statusCode != 200) {
+        throw Exception('Error al generar reporte. Código: ${response.statusCode}, Respuesta: ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error en generarReporte: $e');
+      throw Exception('Error al generar reporte: $e');
+    }
+  }
+
+  // --- CRONOGRAMAS (SUPERVISOR) ---
+  Future<List<Map<String, dynamic>>> getCronogramas() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/cronogramas'),
+        headers: headers,
+      );
+
+      print('🔗 Obteniendo cronogramas desde: $baseUrl/api/cronogramas');
+      print('📌 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        // Mock data para desarrollo
+        return [
+          {
+            'id': 1,
+            'operador': 'Operador A',
+            'contrato': 'CON-2024-001',
+            'fecha_inicio': '2024-01-01T00:00:00Z',
+            'fecha_fin': '2024-12-31T00:00:00Z',
+            'estado': 'activo',
+            'visitas_programadas': 50,
+            'visitas_completadas': 35,
+          },
+          {
+            'id': 2,
+            'operador': 'Operador B',
+            'contrato': 'CON-2024-002',
+            'fecha_inicio': '2024-02-01T00:00:00Z',
+            'fecha_fin': '2024-11-30T00:00:00Z',
+            'estado': 'pendiente',
+            'visitas_programadas': 30,
+            'visitas_completadas': 0,
+          },
+        ];
+      }
+    } catch (e) {
+      print('❌ Error en getCronogramas: $e');
+      // Mock data para desarrollo
+      return [
+        {
+          'id': 1,
+          'operador': 'Operador A',
+          'contrato': 'CON-2024-001',
+          'fecha_inicio': '2024-01-01T00:00:00Z',
+          'fecha_fin': '2024-12-31T00:00:00Z',
+          'estado': 'activo',
+          'visitas_programadas': 50,
+          'visitas_completadas': 35,
+        },
+        {
+          'id': 2,
+          'operador': 'Operador B',
+          'contrato': 'CON-2024-002',
+          'fecha_inicio': '2024-02-01T00:00:00Z',
+          'fecha_fin': '2024-11-30T00:00:00Z',
+          'estado': 'pendiente',
+          'visitas_programadas': 30,
+          'visitas_completadas': 0,
+        },
+      ];
+    }
+  }
+
+  // --- ACTIVIDAD RECIENTE (SUPERVISOR) ---
+  Future<List<Visita>> getUltimasVisitas() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/visitas/ultimas'),
+        headers: headers,
+      );
+
+      print('🔗 Obteniendo últimas visitas desde: $baseUrl/api/visitas/ultimas');
+      print('📌 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Visita.fromJson(json)).toList();
+      } else {
+        throw Exception('Error al cargar últimas visitas. Código: ${response.statusCode}, Respuesta: ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error en getUltimasVisitas: $e');
+      throw Exception('Error al cargar últimas visitas: $e');
+    }
+  }
+
+  Future<List<Visita>> getVisitasSinEvidencia() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/visitas/sin-evidencia'),
+        headers: headers,
+      );
+
+      print('🔗 Obteniendo visitas sin evidencia desde: $baseUrl/api/visitas/sin-evidencia');
+      print('📌 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Visita.fromJson(json)).toList();
+      } else {
+        throw Exception('Error al cargar visitas sin evidencia. Código: ${response.statusCode}, Respuesta: ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error en getVisitasSinEvidencia: $e');
+      throw Exception('Error al cargar visitas sin evidencia: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getEstadisticasActividad() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/dashboard/actividad'),
+        headers: headers,
+      );
+
+      print('🔗 Obteniendo estadísticas de actividad desde: $baseUrl/api/dashboard/actividad');
+      print('📌 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        // Mock data para desarrollo
+        return {
+          'total_visitas': 150,
+          'visitas_hoy': 5,
+          'visitas_semana': 25,
+          'visitas_pendientes': 15,
+        };
+      }
+    } catch (e) {
+      print('❌ Error en getEstadisticasActividad: $e');
+      // Mock data para desarrollo
+      return {
+        'total_visitas': 150,
+        'visitas_hoy': 5,
+        'visitas_semana': 25,
+        'visitas_pendientes': 15,
+      };
+    }
+  }
+
+  // --- GESTIÓN DE USUARIOS (SUPERVISOR) ---
+  Future<List<Usuario>> getTodosUsuarios() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/usuarios'),
+        headers: headers,
+      );
+
+      print('🔗 Obteniendo todos los usuarios desde: $baseUrl/api/usuarios');
+      print('📌 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Usuario.fromJson(json)).toList();
+      } else {
+        throw Exception('Error al cargar usuarios. Código: ${response.statusCode}, Respuesta: ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error en getTodosUsuarios: $e');
+      throw Exception('Error al cargar usuarios: $e');
+    }
+  }
+
+  // --- NOTIFICACIONES SUPERVISOR ---
+  Future<List<Map<String, dynamic>>> getAlertasSistema() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/alertas/sistema'),
+        headers: headers,
+      );
+
+      print('🔗 Obteniendo alertas del sistema desde: $baseUrl/api/alertas/sistema');
+      print('📌 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        // Mock data para desarrollo
+        return [
+          {
+            'titulo': 'Sistema funcionando correctamente',
+            'mensaje': 'Todos los servicios están operativos',
+            'prioridad': 'baja',
+            'fecha': DateTime.now().toIso8601String(),
+          },
+        ];
+      }
+    } catch (e) {
+      print('❌ Error en getAlertasSistema: $e');
+      // Mock data para desarrollo
+      return [
+        {
+          'titulo': 'Sistema funcionando correctamente',
+          'mensaje': 'Todos los servicios están operativos',
+          'prioridad': 'baja',
+          'fecha': DateTime.now().toIso8601String(),
+        },
+      ];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getInconsistenciasDatos() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/alertas/inconsistencias'),
+        headers: headers,
+      );
+
+      print('🔗 Obteniendo inconsistencias desde: $baseUrl/api/alertas/inconsistencias');
+      print('📌 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        // Mock data para desarrollo
+        return [
+          {
+            'titulo': 'Visita sin evidencia fotográfica',
+            'mensaje': 'La visita #123 no tiene fotos adjuntas',
+            'prioridad': 'alta',
+            'fecha': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
+          },
+        ];
+      }
+    } catch (e) {
+      print('❌ Error en getInconsistenciasDatos: $e');
+      // Mock data para desarrollo
+      return [
+        {
+          'titulo': 'Visita sin evidencia fotográfica',
+          'mensaje': 'La visita #123 no tiene fotos adjuntas',
+          'prioridad': 'alta',
+          'fecha': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
+        },
+      ];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getVencimientosCronogramas() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/alertas/vencimientos'),
+        headers: headers,
+      );
+
+      print('🔗 Obteniendo vencimientos desde: $baseUrl/api/alertas/vencimientos');
+      print('📌 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        // Mock data para desarrollo
+        return [
+          {
+            'titulo': 'Cronograma próximo a vencer',
+            'mensaje': 'El cronograma #2 vence en 5 días',
+            'prioridad': 'media',
+            'fecha': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
+          },
+        ];
+      }
+    } catch (e) {
+      print('❌ Error en getVencimientosCronogramas: $e');
+      // Mock data para desarrollo
+      return [
+        {
+          'titulo': 'Cronograma próximo a vencer',
+          'mensaje': 'El cronograma #2 vence en 5 días',
+          'prioridad': 'media',
+          'fecha': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
+        },
+      ];
+    }
+  }
+
   // --- PERFIL DE USUARIO ---
   Future<Map<String, dynamic>> getPerfilUsuario() async {
     try {
@@ -898,6 +1180,115 @@ class ApiService {
     } catch (e) {
       print('❌ Error en getPerfilUsuario: $e');
       throw Exception('Error al cargar perfil: $e');
+    }
+  }
+
+  // --- VISITAS COMPLETAS PAE ---
+  Future<List<dynamic>> getVisitasCompletas() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/visitas-completas-pae'),
+        headers: headers,
+      );
+
+      print('🔗 Obteniendo visitas completas desde: $baseUrl/api/visitas-completas-pae');
+      print('📌 Status: ${response.statusCode}');
+      print('📌 Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data;
+      } else {
+        throw Exception('Error al cargar visitas completas. Código: ${response.statusCode}, Respuesta: ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error en getVisitasCompletas: $e');
+      throw Exception('Error al cargar visitas completas: $e');
+    }
+  }
+
+  // --- VISITAS PENDIENTES PAE ---
+  Future<List<dynamic>> getVisitasPendientes() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/visitas-completas-pae/pendientes'),
+        headers: headers,
+      );
+
+      print('🔗 Obteniendo visitas pendientes desde: $baseUrl/api/visitas-completas-pae/pendientes');
+      print('📌 Status: ${response.statusCode}');
+      print('📌 Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data;
+      } else {
+        throw Exception('Error al cargar visitas pendientes. Código: ${response.statusCode}, Respuesta: ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error en getVisitasPendientes: $e');
+      throw Exception('Error al cargar visitas pendientes: $e');
+    }
+  }
+
+  // --- ACTUALIZAR ESTADO DE VISITA ---
+  Future<bool> actualizarEstadoVisita(int visitaId, String estado) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/visitas-completas-pae/$visitaId/estado?estado=$estado'),
+        headers: headers,
+      );
+
+      print('🔗 Actualizando estado de visita $visitaId a $estado');
+      print('📌 Status: ${response.statusCode}');
+      print('📌 Body: ${response.body}');
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('❌ Error en actualizarEstadoVisita: $e');
+      throw Exception('Error al actualizar estado de visita: $e');
+    }
+  }
+
+  // --- DESCARGAR EXCEL DE VISITA COMPLETA ---
+  Future<void> descargarExcelVisita(int visitaId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/visitas-completas-pae/$visitaId/excel'),
+        headers: headers,
+      );
+
+      print('🔗 Descargando Excel para visita $visitaId desde: $baseUrl/api/visitas-completas-pae/$visitaId/excel');
+      print('📌 Status: ${response.statusCode}');
+      print('📌 Content-Type: ${response.headers['content-type']}');
+      print('📌 Content-Length: ${response.bodyBytes.length} bytes');
+
+      if (response.statusCode == 200) {
+        // Crear el archivo Excel en el directorio de descargas
+        final bytes = response.bodyBytes;
+        final filename = 'visita_${visitaId}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+        
+        // En Flutter web, necesitamos usar un enfoque diferente para la descarga
+        // Usaremos la API de descarga del navegador
+        final blob = html.Blob([bytes], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', filename)
+          ..setAttribute('target', '_blank')
+          ..click();
+        html.Url.revokeObjectUrl(url);
+        
+        print('✅ Excel descargado exitosamente: $filename');
+      } else {
+        throw Exception('Error al descargar Excel. Código: ${response.statusCode}, Respuesta: ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error en descargarExcelVisita: $e');
+      throw Exception('Error al descargar Excel: $e');
     }
   }
 }
